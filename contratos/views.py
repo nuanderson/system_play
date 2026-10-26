@@ -19,8 +19,8 @@ def contratos_visiveis(usuario):
     """Síndico vê todos. O responsável da unidade vê só os contratos da própria unidade."""
     if usuario.pode('contratos_ver_todos'):
         return Contrato.objects.all()
-    if usuario.pode('contratos_ver_proprio') and usuario.unidade_id:
-        return Contrato.objects.filter(unidade_id=usuario.unidade_id)
+    if usuario.pode('contratos_ver_proprio'):
+        return Contrato.objects.filter(unidade_id__in=usuario.unidades_ids())
     return Contrato.objects.none()
 
 

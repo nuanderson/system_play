@@ -29,6 +29,11 @@ class Usuario(AbstractUser):
         'cadastros.Unidade', verbose_name='unidade', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='usuarios',
     )
+    locatario = models.ForeignKey(
+        'cadastros.Locatario', verbose_name='empresa (locatário)', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='usuarios',
+        help_text='A empresa do usuário. Ele enxerga todas as unidades que ela ocupa.',
+    )
     telefone = models.CharField('telefone', max_length=30, blank=True)
     trocar_senha = models.BooleanField(
         'precisa trocar a senha', default=False,
@@ -43,6 +48,27 @@ class Usuario(AbstractUser):
 
     def pode(self, *permissoes):
         return self.is_active and tem_permissao(self.perfil, *permissoes)
+
+    def unidades_ids(self):
+        """
+        Unidades que o responsável ou o membro enxerga.
+        Com uma unidade marcada, só ela. Sem unidade, todas as unidades ativas que a empresa ocupa.
+        """
+        if self.unidade_id:
+            return [self.unidade_id]
+        if self.locatario_id:
+            from cadastros.models import Unidade
+            return list(Unidade.objects.filter(locatario_id=self.locatario_id, ativa=True).values_list('pk', flat=True))
+        return []
+
+    def unidades(self):
+        from cadastros.models import Unidade
+        return Unidade.objects.filter(pk__in=self.unidades_ids())
+
+    @property
+    def tem_escopo(self):
+        """Está ligado a uma empresa ou a uma unidade (mesmo que a empresa ainda não ocupe nenhuma)."""
+        return bool(self.unidade_id or self.locatario_id)
 
     @property
     def e_sindico(self):

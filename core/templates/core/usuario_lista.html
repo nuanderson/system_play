@@ -28,7 +28,7 @@
               {% if not u.is_active %}<span class="badge text-bg-secondary">desativado</span>{% endif %}
               {% if u.trocar_senha %}<span class="badge text-bg-warning">senha provisória</span>{% endif %}
               <div class="suave" style="font-size:.85rem">{{ u.username }}</div></td>
-            <td style="white-space:normal; min-width:150px;">{{ u.get_perfil_display }}{% if u.unidade %}<div class="suave" style="font-size:.85rem">{{ u.unidade }}</div>{% endif %}</td>
+            <td style="white-space:normal; min-width:150px;">{{ u.get_perfil_display }}{% if u.locatario or u.unidade %}<div class="suave" style="font-size:.85rem">{% if u.locatario %}{{ u.locatario }}{% endif %}{% if u.locatario and u.unidade %} · {% endif %}{% if u.unidade %}só {{ u.unidade }}{% elif u.locatario %}todas as unidades{% endif %}</div>{% endif %}</td>
             <td>{{ u.last_login|date:"d/m/Y H:i"|default:"nunca entrou" }}</td>
             <td class="text-end">
               <div class="acoes">

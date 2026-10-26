@@ -21,8 +21,8 @@ def correspondencias_visiveis(usuario):
     """Equipe e síndico veem tudo. Os demais veem só o que chegou para a própria unidade."""
     if usuario.pode('correspondencias_gerenciar'):
         return Correspondencia.objects.all()
-    if usuario.unidade_id:
-        return Correspondencia.objects.filter(unidade_id=usuario.unidade_id)
+    if usuario.unidades_ids():
+        return Correspondencia.objects.filter(unidade_id__in=usuario.unidades_ids())
     return Correspondencia.objects.none()
 
 
@@ -41,7 +41,7 @@ class CorrespondenciaLista(PermissaoRequiredMixin, ListView):
         if tipo in Correspondencia.Tipo.values:
             consulta = consulta.filter(tipo=tipo)
         unidade = self.request.GET.get('unidade', '')
-        if self.request.user.pode('correspondencias_gerenciar') and unidade.isdigit():
+        if unidade.isdigit():
             consulta = consulta.filter(unidade_id=int(unidade))
         busca = self.request.GET.get('q', '').strip()
         if busca:
@@ -57,7 +57,7 @@ class CorrespondenciaLista(PermissaoRequiredMixin, ListView):
             ),
             situacoes=[('todas', 'Todas')] + list(Correspondencia.Status.choices),
             tipos=Correspondencia.Tipo.choices,
-            unidades=Unidade.objects.all() if self.request.user.pode('correspondencias_gerenciar') else [],
+            unidades=Unidade.objects.all() if self.request.user.pode('correspondencias_gerenciar') else self.request.user.unidades() if len(self.request.user.unidades_ids()) > 1 else [],
         )
         return contexto
 

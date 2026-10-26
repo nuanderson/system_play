@@ -253,7 +253,7 @@ class HomePorPerfilTests(Base):
                 'Mural de contatos', 'Relatórios'},
             E: {'Chamados de manutenção', 'Correspondências', 'Mural de contatos'},
             C: {'Contratos', 'Cobranças', 'Mural de contatos', 'Relatórios'},
-            L: {'Pessoas da unidade', 'Contratos', 'Cobranças', 'Chamados de manutenção', 'Correspondências', 'Mural de contatos'},
+            L: {'Pessoas da empresa', 'Contratos', 'Cobranças', 'Chamados de manutenção', 'Correspondências', 'Mural de contatos'},
             M: {'Chamados de manutenção', 'Correspondências', 'Mural de contatos'},
         }
         todos = {m['titulo'] for _, itens in MODULOS for m in itens}

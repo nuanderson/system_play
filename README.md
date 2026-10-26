@@ -60,7 +60,9 @@ Seis perfis. A tabela completa de permissões está num único arquivo, `core/ac
 | **Responsável da unidade** | Contratos e cobranças da própria unidade, chamados e correspondências da unidade, mural, e cadastra/desativa as pessoas da própria unidade |
 | **Membro da unidade** | Chamados e correspondências da unidade, mural |
 
-Usuários: o síndico cria e gerencia em **Usuários e acessos**; o responsável da unidade gerencia **Pessoas da unidade**. Quem é cadastrado recebe uma **senha provisória**, mostrada uma única vez, e só consegue usar o sistema depois de escolher a própria senha. Desativar um usuário tira o acesso na hora e mantém o histórico. O sistema não deixa desativar a si mesmo, mudar o próprio perfil nem ficar sem síndico ativo. A sessão expira em 12 horas, e o nome no alto da página leva à troca de senha.
+**Empresas com mais de uma unidade.** No cadastro do locatário, marque todas as unidades que ele ocupa (só aparecem as livres). Cada unidade continua com o próprio contrato, rateio e cobrança. Responsável e membro são ligados à **empresa** e enxergam as unidades dela (contratos, cobranças, chamados e correspondências); quem recebe uma unidade nova passa a vê-la sozinho. Para limitar uma pessoa a uma só unidade, preencha "Limitar a uma unidade". Ao abrir um chamado, quem tem várias unidades escolhe em qual. Não dá para tirar uma unidade que tenha contrato vigente do locatário, nem criar contrato de outro locatário numa unidade já cadastrada para alguém. Cadastros antigos, ligados só a uma unidade, continuam iguais.
+
+Usuários: o síndico cria e gerencia em **Usuários e acessos**; o responsável da unidade gerencia **Pessoas da empresa**. Quem é cadastrado recebe uma **senha provisória**, mostrada uma única vez, e só consegue usar o sistema depois de escolher a própria senha. Desativar um usuário tira o acesso na hora e mantém o histórico. O sistema não deixa desativar a si mesmo, mudar o próprio perfil nem ficar sem síndico ativo. A sessão expira em 12 horas, e o nome no alto da página leva à troca de senha.
 
 ## Mural de contatos
 

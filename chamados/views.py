@@ -20,8 +20,8 @@ def chamados_visiveis(usuario):
     """Equipe e síndico veem todos. Os demais veem os chamados da própria unidade."""
     if usuario.pode('chamados_gerenciar'):
         return Chamado.objects.all()
-    if usuario.unidade_id:
-        return Chamado.objects.filter(unidade_id=usuario.unidade_id)
+    if usuario.unidades_ids():
+        return Chamado.objects.filter(unidade_id__in=usuario.unidades_ids())
     return Chamado.objects.none()
 
 
@@ -49,7 +49,7 @@ class ChamadoLista(PermissaoRequiredMixin, ListView):
         if categoria in Chamado.Categoria.values:
             consulta = consulta.filter(categoria=categoria)
         unidade = self.request.GET.get('unidade', '')
-        if self.request.user.pode('chamados_gerenciar') and unidade.isdigit():
+        if unidade.isdigit():
             consulta = consulta.filter(unidade_id=int(unidade))
         return consulta.order_by('-prioridade', '-aberto_em') if situacao == 'abertos' else consulta
 
@@ -66,8 +66,8 @@ class ChamadoLista(PermissaoRequiredMixin, ListView):
             situacoes=[('abertos', 'Em aberto'), ('todos', 'Todos')] + list(Chamado.Status.choices),
             prioridades=Chamado.Prioridade.choices,
             categorias=Chamado.Categoria.choices,
-            unidades=Unidade.objects.all() if usuario.pode('chamados_gerenciar') else [],
-            pode_abrir=usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and bool(usuario.unidade_id)),
+            unidades=Unidade.objects.all() if usuario.pode('chamados_gerenciar') else (usuario.unidades() if len(usuario.unidades_ids()) > 1 else []),
+            pode_abrir=usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and bool(usuario.unidades_ids())),
         )
         return contexto
 
@@ -81,7 +81,7 @@ class ChamadoCriar(PermissaoRequiredMixin, CreateView):
 
     def dispatch(self, request, *args, **kwargs):
         usuario = request.user
-        if usuario.is_authenticated and not (usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and usuario.unidade_id)):
+        if usuario.is_authenticated and not (usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and usuario.unidades_ids())):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
@@ -94,8 +94,8 @@ class ChamadoCriar(PermissaoRequiredMixin, CreateView):
         usuario = self.request.user
         chamado = form.save(commit=False)
         chamado.solicitante = usuario
-        if not usuario.pode('chamados_gerenciar'):
-            chamado.unidade = usuario.unidade
+        if not usuario.pode('chamados_gerenciar') and 'unidade' not in form.fields:
+            chamado.unidade = usuario.unidades().first()
         chamado.save()
         for arquivo in form.cleaned_data['fotos']:
             Anexo.objects.create(

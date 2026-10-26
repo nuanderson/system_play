@@ -82,6 +82,11 @@ class Contrato(models.Model):
             outro = Contrato.objects.filter(unidade_id=self.unidade_id, status=self.Status.VIGENTE).exclude(pk=self.pk)
             if self.unidade_id and outro.exists():
                 erros['status'] = 'Esta unidade já tem um contrato vigente. Encerre o anterior antes.'
+            elif self.unidade_id and self.locatario_id:
+                ocupante = Unidade.objects.filter(pk=self.unidade_id).values_list('locatario__razao_social', 'locatario_id').first()
+                if ocupante and ocupante[1] and ocupante[1] != self.locatario_id:
+                    erros['locatario'] = (f'Esta unidade está cadastrada para {ocupante[0]}. '
+                                          'Ajuste o cadastro dos locatários antes de criar este contrato.')
         if erros:
             raise ValidationError(erros)
 

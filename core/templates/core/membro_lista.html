@@ -1,24 +1,27 @@
 {% extends 'base.html' %}
-{% block titulo %}Pessoas da unidade · Edifício Uruz{% endblock %}
-{% block h1 %}Pessoas da unidade{% endblock %}
+{% block titulo %}Pessoas da empresa · Edifício Uruz{% endblock %}
+{% block h1 %}Pessoas da empresa{% endblock %}
 {% block conteudo %}
-<p class="suave">{{ unidade }} · quem pode entrar no sistema por esta unidade. Elas veem os chamados e as correspondências da unidade e podem abrir chamados.</p>
+<p class="suave">
+  {% if empresa %}<strong>{{ empresa }}</strong> · {% endif %}{% for u in unidades %}{{ u.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+  Quem pode entrar no sistema por {% if unidades|length > 1 %}estas unidades{% else %}esta unidade{% endif %}: vê os chamados e as correspondências {% if unidades|length > 1 %}delas{% else %}dela{% endif %} e pode abrir chamados.
+</p>
 <p><a class="btn btn-marca" href="{% url 'membro_criar' %}">{% include 'partials/icone.html' with nome='mais' %}Adicionar pessoa</a></p>
 
 <div class="cartao">
   <div class="table-responsive">
     <table class="table table-uruz table-hover align-middle mb-0">
-      <thead><tr><th>Nome</th><th>Usuário</th><th>E-mail</th><th>Último acesso</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Acesso</th><th>E-mail</th><th>Último acesso</th><th></th></tr></thead>
       <tbody>
         {% for r in responsaveis %}
-          <tr><td>{{ r.get_full_name|default:r.username }} <span class="badge text-bg-primary">responsável</span></td><td>{{ r.username }}</td><td>{{ r.email|default:"—" }}</td><td>{{ r.last_login|date:"d/m/Y H:i"|default:"—" }}</td><td></td></tr>
+          <tr><td>{{ r.get_full_name|default:r.username }} <span class="badge text-bg-primary">responsável</span><div class="suave" style="font-size:.85rem">{{ r.username }}</div></td><td>{% if r.unidade %}só {{ r.unidade }}{% else %}todas as unidades{% endif %}</td><td>{{ r.email|default:"—" }}</td><td>{{ r.last_login|date:"d/m/Y H:i"|default:"—" }}</td><td></td></tr>
         {% endfor %}
         {% for m in membros %}
           <tr{% if not m.is_active %} style="opacity:.6"{% endif %}>
             <td>{{ m.get_full_name|default:m.username }}
               {% if not m.is_active %}<span class="badge text-bg-secondary">desativado</span>{% endif %}
               {% if m.trocar_senha %}<span class="badge text-bg-warning">ainda não entrou</span>{% endif %}</td>
-            <td>{{ m.username }}</td><td>{{ m.email|default:"—" }}</td>
+            <td>{% if m.unidade %}só {{ m.unidade }}{% else %}todas as unidades{% endif %}<div class="suave" style="font-size:.85rem">{{ m.username }}</div></td><td>{{ m.email|default:"—" }}</td>
             <td>{{ m.last_login|date:"d/m/Y H:i"|default:"nunca entrou" }}</td>
             <td class="text-end">
               <div class="acoes">

@@ -81,6 +81,10 @@ else:
     }
 
 AUTH_USER_MODEL = 'core.Usuario'
+if 'test' in sys.argv:
+    # Só nos testes: senha com hash rápido deixa a bateria de 10 minutos em poucos segundos.
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
+
 SESSION_COOKIE_AGE = 60 * 60 * 12  # a sessão expira em 12 horas
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'inicio'

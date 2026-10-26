@@ -10,6 +10,7 @@ from chamados.models import Chamado
 from contatos.models import Contato
 from contratos.models import DIAS_ALERTA_VENCIMENTO, Contrato
 from core.models import Usuario
+from core.usuarios import pessoas_da_empresa
 from correspondencias.models import DIAS_ALERTA, Correspondencia
 from financeiro.models import Cobranca, Competencia
 
@@ -40,8 +41,8 @@ def alertas(usuario):
 
     if usuario.pode('cobrancas_ver_todas'):
         cobrancas_atrasadas(Cobranca.atrasadas())
-    elif usuario.pode('cobrancas_ver_proprias') and usuario.unidade_id:
-        cobrancas_atrasadas(Cobranca.atrasadas().filter(unidade_id=usuario.unidade_id))
+    elif usuario.pode('cobrancas_ver_proprias') and usuario.unidades_ids():
+        cobrancas_atrasadas(Cobranca.atrasadas().filter(unidade_id__in=usuario.unidades_ids()))
 
     if usuario.pode('contratos_ver_todos'):
         vencidos = Contrato.vigentes().filter(data_fim__lt=timezone.localdate()).count()
@@ -63,8 +64,8 @@ def alertas(usuario):
         if paradas:
             adicionar(MEDIO, f'{plural(paradas, "correspondência parada", "correspondências paradas")} há {DIAS_ALERTA} dias ou mais',
                       reverse('correspondencia_lista'))
-    elif usuario.pode('correspondencias_ver_proprias') and usuario.unidade_id:
-        esperando = Correspondencia.pendentes().filter(unidade_id=usuario.unidade_id).count()
+    elif usuario.pode('correspondencias_ver_proprias') and usuario.unidades_ids():
+        esperando = Correspondencia.pendentes().filter(unidade_id__in=usuario.unidades_ids()).count()
         if esperando:
             adicionar(INFO, plural(esperando, 'correspondência esperando por você', 'correspondências esperando por você'),
                       reverse('correspondencia_lista'))
@@ -80,9 +81,9 @@ def resumos(usuario):
         dados['Locatários'] = plural(Locatario.objects.filter(ativo=True).count(), 'ativo', 'ativos')
     if usuario.pode('usuarios_gerenciar'):
         dados['Usuários e acessos'] = plural(Usuario.objects.filter(is_active=True).count(), 'usuário ativo', 'usuários ativos')
-    if usuario.pode('membros_gerenciar') and usuario.unidade_id:
-        ativos = Usuario.objects.filter(unidade_id=usuario.unidade_id, is_active=True).count()
-        dados['Pessoas da unidade'] = plural(ativos, 'pessoa com acesso', 'pessoas com acesso')
+    if usuario.pode('membros_gerenciar') and usuario.tem_escopo:
+        ativos = pessoas_da_empresa(usuario).filter(is_active=True).count()
+        dados['Pessoas da empresa'] = plural(ativos, 'pessoa com acesso', 'pessoas com acesso')
     if usuario.pode('financeiro_preparar'):
         ultima = Competencia.objects.first()
         dados['Condomínio e rateio'] = (
@@ -90,24 +91,23 @@ def resumos(usuario):
 
     if usuario.pode('contratos_ver_todos'):
         dados['Contratos'] = plural(Contrato.vigentes().count(), 'vigente', 'vigentes')
-    elif usuario.pode('contratos_ver_proprio') and usuario.unidade_id:
-        dados['Contratos'] = plural(Contrato.vigentes().filter(unidade_id=usuario.unidade_id).count(), 'vigente', 'vigentes')
+    elif usuario.pode('contratos_ver_proprio'):
+        dados['Contratos'] = plural(Contrato.vigentes().filter(unidade_id__in=usuario.unidades_ids()).count(), 'vigente', 'vigentes')
     if usuario.pode('cobrancas_ver_todas'):
         dados['Cobranças'] = f'{reais(Cobranca.em_aberto().aggregate(t=Sum("valor"))["t"])} em aberto'
-    elif usuario.pode('cobrancas_ver_proprias') and usuario.unidade_id:
-        aberto = Cobranca.em_aberto().filter(unidade_id=usuario.unidade_id).aggregate(t=Sum('valor'))['t']
+    elif usuario.pode('cobrancas_ver_proprias'):
+        aberto = Cobranca.em_aberto().filter(unidade_id__in=usuario.unidades_ids()).aggregate(t=Sum('valor'))['t']
         dados['Cobranças'] = f'{reais(aberto)} em aberto'
 
     if usuario.pode('chamados_ver'):
         chamados = Chamado.abertos()
         if not usuario.pode('chamados_gerenciar'):
-            chamados = chamados.filter(unidade_id=usuario.unidade_id) if usuario.unidade_id else chamados.none()
+            chamados = chamados.filter(unidade_id__in=usuario.unidades_ids())
         dados['Chamados de manutenção'] = f'{chamados.count()} em aberto'
     if usuario.pode('correspondencias_gerenciar', 'correspondencias_ver_proprias'):
         correspondencias = Correspondencia.pendentes()
         if not usuario.pode('correspondencias_gerenciar'):
-            correspondencias = (correspondencias.filter(unidade_id=usuario.unidade_id)
-                                if usuario.unidade_id else correspondencias.none())
+            correspondencias = correspondencias.filter(unidade_id__in=usuario.unidades_ids())
         dados['Correspondências'] = f'{correspondencias.count()} aguardando retirada'
     dados['Mural de contatos'] = plural(Contato.objects.count(), 'contato', 'contatos')
     return dados
@@ -122,7 +122,7 @@ MODULOS = [
              rota='locatario_lista', permissoes=['cadastros_ver']),
         dict(titulo='Usuários e acessos', texto='Quem acessa o sistema e com qual perfil', icone='🔑', cor='marinho',
              rota='usuarios', permissoes=['usuarios_gerenciar']),
-        dict(titulo='Pessoas da unidade', texto='Quem da sua empresa pode entrar no sistema', icone='👥', cor='marinho',
+        dict(titulo='Pessoas da empresa', texto='Quem da sua empresa pode entrar no sistema', icone='👥', cor='marinho',
              rota='membros', permissoes=['membros_gerenciar']),
     ]),
     ('Financeiro', [

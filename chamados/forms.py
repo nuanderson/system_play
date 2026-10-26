@@ -55,7 +55,14 @@ class ChamadoForm(forms.ModelForm):
             self.fields['unidade'].queryset = Unidade.objects.filter(ativa=True)
             self.fields['unidade'].empty_label = 'Área comum do prédio'
         else:
-            del self.fields['unidade']
+            unidades = usuario.unidades()
+            if unidades.count() > 1:
+                self.fields['unidade'].queryset = unidades
+                self.fields['unidade'].required = True
+                self.fields['unidade'].empty_label = 'Escolha a unidade'
+                self.fields['unidade'].help_text = 'Em qual unidade está o problema?'
+            else:
+                del self.fields['unidade']
 
     def clean_fotos(self):
         fotos = self.cleaned_data.get('fotos') or []

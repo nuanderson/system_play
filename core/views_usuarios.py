@@ -14,7 +14,7 @@ from cadastros.models import Unidade
 from .forms import MembroForm, UsuarioForm
 from .models import Usuario
 from .permissions import PermissaoRequiredMixin
-from .usuarios import definir_senha_provisoria
+from .usuarios import definir_senha_provisoria, pessoas_da_empresa
 
 
 def guardar_senha_provisoria(request, usuario, voltar):
@@ -130,12 +130,12 @@ class MembrosMixin(PermissaoRequiredMixin):
     permissao = 'membros_gerenciar'
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and request.user.pode('membros_gerenciar') and not request.user.unidade_id:
+        if request.user.is_authenticated and request.user.pode('membros_gerenciar') and not request.user.tem_escopo:
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
     def membros(self):
-        return Usuario.objects.filter(unidade_id=self.request.user.unidade_id, perfil=Usuario.Perfil.MEMBRO)
+        return pessoas_da_empresa(self.request.user).filter(perfil=Usuario.Perfil.MEMBRO)
 
 
 class MembroLista(MembrosMixin, ListView):
@@ -147,9 +147,10 @@ class MembroLista(MembrosMixin, ListView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        contexto['unidade'] = self.request.user.unidade
-        contexto['responsaveis'] = Usuario.objects.filter(
-            unidade_id=self.request.user.unidade_id, perfil=Usuario.Perfil.LOCATARIO, is_active=True)
+        usuario = self.request.user
+        contexto['empresa'] = usuario.locatario
+        contexto['unidades'] = usuario.unidades()
+        contexto['responsaveis'] = pessoas_da_empresa(usuario).filter(perfil=Usuario.Perfil.LOCATARIO, is_active=True)
         return contexto
 
 
@@ -157,12 +158,21 @@ class MembroCriar(MembrosMixin, CreateView):
     model = Usuario
     form_class = MembroForm
     template_name = 'form.html'
-    extra_context = {'titulo': 'Nova pessoa da unidade'}
+    extra_context = {'titulo': 'Nova pessoa da empresa'}
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['responsavel'] = self.request.user
+        return kwargs
 
     def form_valid(self, form):
+        responsavel = self.request.user
         usuario = form.save(commit=False)
         usuario.perfil = Usuario.Perfil.MEMBRO
-        usuario.unidade = self.request.user.unidade
+        usuario.locatario = responsavel.locatario
+        if 'unidade' not in form.fields:
+            # Sem escolha de unidade: o membro nunca enxerga mais do que o próprio responsável.
+            usuario.unidade = responsavel.unidade if responsavel.unidade_id else None
         usuario.set_unusable_password()
         usuario.save()
         messages.success(self.request, f'{usuario} agora tem acesso.')

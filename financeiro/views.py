@@ -155,7 +155,7 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
         usuario = self.request.user
         consulta = Cobranca.objects.select_related('unidade', 'locatario')
         if not usuario.pode('cobrancas_ver_todas'):
-            consulta = consulta.filter(unidade_id=usuario.unidade_id).exclude(status=Cobranca.Status.CANCELADA)
+            consulta = consulta.filter(unidade_id__in=usuario.unidades_ids()).exclude(status=Cobranca.Status.CANCELADA)
         situacao = self.request.GET.get('situacao', '')
         hoje = timezone.localdate()
         if situacao == 'atrasada':
@@ -171,7 +171,7 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
         if len(mes) == 7 and mes[4] == '-' and mes[:4].isdigit() and mes[5:].isdigit():
             consulta = consulta.filter(referencia__year=int(mes[:4]), referencia__month=int(mes[5:]))
         unidade = self.request.GET.get('unidade', '')
-        if usuario.pode('cobrancas_ver_todas') and unidade.isdigit():
+        if unidade.isdigit():
             consulta = consulta.filter(unidade_id=int(unidade))
         return consulta
 
@@ -189,7 +189,7 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
             ),
             situacoes=[('aberta', 'Em aberto'), ('atrasada', 'Atrasadas'), ('paga', 'Pagas'), ('cancelada', 'Canceladas')],
             tipos=Cobranca.Tipo.choices,
-            unidades=Unidade.objects.all() if self.request.user.pode('cobrancas_ver_todas') else [],
+            unidades=Unidade.objects.all() if self.request.user.pode('cobrancas_ver_todas') else self.request.user.unidades() if len(self.request.user.unidades_ids()) > 1 else [],
         )
         return contexto
 
