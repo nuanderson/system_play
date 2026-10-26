@@ -227,13 +227,13 @@ class InicioTests(Base):
         for usuario in (self.sindico, self.equipe):
             self.client.force_login(usuario)
             resposta = self.client.get(reverse('inicio'))
-            self.assertContains(resposta, 'correspondências aguardando retirada')
-            self.assertContains(resposta, f'paradas há {DIAS_ALERTA} dias ou mais')
+            self.assertContains(resposta, '2 aguardando retirada')
+            self.assertContains(resposta, f'1 correspondência parada há {DIAS_ALERTA} dias ou mais')
 
     def test_locatario_ve_o_que_espera_por_ele(self):
         self.nova(self.sala1)
         self.nova(self.sala2)
         self.client.force_login(self.resp1)
         resposta = self.client.get(reverse('inicio'))
-        self.assertContains(resposta, 'correspondências esperando por você')
-        self.assertContains(resposta, 'Correspondências')
+        self.assertContains(resposta, '1 correspondência esperando por você')
+        self.assertContains(resposta, '1 aguardando retirada')  # só a da própria unidade

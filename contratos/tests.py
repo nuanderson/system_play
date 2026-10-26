@@ -159,8 +159,8 @@ class ContratoTests(TestCase):
         novo_contrato(self.unidade, self.empresa, data_fim=timezone.localdate() + timedelta(days=30))
         self.client.force_login(self.sindico)
         resposta = self.client.get(reverse('inicio'))
-        self.assertContains(resposta, 'contratos vigentes')
-        self.assertContains(resposta, 'contratos vencem em até 90 dias')
+        self.assertContains(resposta, '1 vigente')
+        self.assertContains(resposta, '1 contrato vence em até 90 dias')
 
 
 class CriarSuperusuarioTests(TestCase):

@@ -282,8 +282,8 @@ class InicioTests(ChamadosBase):
         for usuario in (self.sindico, self.equipe):
             self.client.force_login(usuario)
             resposta = self.client.get(reverse('inicio'))
-            self.assertContains(resposta, 'chamados em aberto')
-            self.assertContains(resposta, 'chamados urgentes')
+            self.assertContains(resposta, '2 em aberto')
+            self.assertContains(resposta, '1 chamado urgente em aberto')
 
     def test_locatario_ve_o_cartao_de_chamados(self):
         self.client.force_login(self.resp1)

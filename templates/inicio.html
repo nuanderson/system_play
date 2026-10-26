@@ -9,9 +9,16 @@
   .relogio .hora { font-size:3rem; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
   .relogio .seg { font-size:1.2rem; font-weight:500; opacity:.85; }
   .relogio small { display:block; margin-top:6px; opacity:.85; }
-  .indicadores { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:28px; }
-  .indicadores .cartao { padding:14px 18px; }
-  .indicadores .valor { font-size:2rem; font-weight:700; color:var(--marca); line-height:1.1; }
+  .atencao { margin-bottom:8px; }
+  .atencao h2 { font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:0 0 10px; }
+  .alerta { display:flex; align-items:center; gap:12px; padding:10px 14px; margin-bottom:8px; border:1px solid var(--borda); border-left-width:5px; border-radius:10px; background:var(--cartao); }
+  .alerta .texto { flex:1; font-weight:600; }
+  .alerta.alto { border-left-color:var(--alerta); }
+  .alerta.medio { border-left-color:#b54708; }
+  .alerta.info { border-left-color:var(--marca); }
+  @media (prefers-color-scheme: dark) { .alerta.medio { border-left-color:#fdb022; } }
+  .tudo-certo { display:flex; align-items:center; gap:12px; padding:12px 16px; border:1px solid var(--borda); border-left:5px solid var(--ok); border-radius:10px; background:var(--cartao); }
+  .resumo-modulo { margin-top:10px; padding-top:8px; border-top:1px solid var(--borda); font-weight:700; color:var(--marca); font-size:.95rem; }
   .etiqueta { display:inline-block; margin-top:8px; font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--suave); border:1px solid var(--borda); border-radius:999px; padding:1px 8px; }
 </style>
 
@@ -27,13 +34,17 @@
   </div>
 </section>
 
-{% if indicadores %}
-  <div class="indicadores">
-    {% for valor, rotulo in indicadores %}
-      <div class="cartao"><div class="valor">{{ valor }}</div><div class="suave">{{ rotulo }}</div></div>
-    {% endfor %}
-  </div>
-{% endif %}
+<section class="atencao">
+  <h2>Precisa de atenção</h2>
+  {% for a in alertas %}
+    <div class="alerta {{ a.nivel }}">
+      <span class="texto">{{ a.texto }}</span>
+      <a class="btn btn-sm btn-acao" href="{{ a.url }}">Ver</a>
+    </div>
+  {% empty %}
+    <div class="tudo-certo"><span style="color:var(--ok); font-size:1.3rem">✓</span><span><strong>Tudo em dia.</strong> <span class="suave">Nada precisa da sua atenção agora.</span></span></div>
+  {% endfor %}
+</section>
 
 {% for nome, itens in secoes %}
   <div class="secao">{{ nome }}</div>
@@ -43,6 +54,7 @@
         <div class="icone {{ m.cor }}">{{ m.icone }}</div>
         <h3>{{ m.titulo }}</h3>
         <p>{{ m.texto }}</p>
+        {% if m.resumo %}<div class="resumo-modulo">{{ m.resumo }}</div>{% endif %}
         {% if not m.url %}<span class="etiqueta">Em breve</span>{% endif %}
       {% if m.url %}</a>{% else %}</div>{% endif %}
     {% endfor %}

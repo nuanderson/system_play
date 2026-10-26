@@ -338,5 +338,5 @@ class PermissoesFinanceiroTests(BaseFinanceiro):
     def test_inicio_do_sindico_mostra_indicadores_financeiros(self):
         self.client.force_login(self.sindico)
         resposta = self.client.get(reverse('inicio'))
-        self.assertContains(resposta, 'cobranças em aberto')
-        self.assertContains(resposta, 'R$ 200,00')
+        self.assertContains(resposta, 'R$ 200,00 em aberto')  # resumo dentro do cartão de Cobranças
+        self.assertContains(resposta, '2 cobranças atrasadas')  # alerta, pois vencem em 10/10/2026

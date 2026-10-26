@@ -58,4 +58,5 @@ class PermissoesTests(TestCase):
         resposta = self.client.get(reverse('inicio'))
         self.assertContains(resposta, 'Unidades</h3>')
         self.assertContains(resposta, 'Condomínio e rateio')
-        self.assertContains(resposta, 'unidades ativas')
+        self.assertContains(resposta, '11 unidades · 0 com locatário')
+        self.assertContains(resposta, 'Tudo em dia')
