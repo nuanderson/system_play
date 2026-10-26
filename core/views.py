@@ -7,6 +7,7 @@ from django.views.generic import TemplateView
 
 from cadastros.models import Locatario, Unidade
 from chamados.models import Chamado
+from contatos.models import Contato
 from contratos.models import DIAS_ALERTA_VENCIMENTO, Contrato
 from core.models import Usuario
 from correspondencias.models import DIAS_ALERTA, Correspondencia
@@ -101,6 +102,7 @@ def resumos(usuario):
                             if usuario.unidade_id else correspondencias.none())
     dados['Chamados de manutenção'] = f'{chamados.count()} em aberto'
     dados['Correspondências'] = f'{correspondencias.count()} aguardando retirada'
+    dados['Mural de contatos'] = plural(Contato.objects.count(), 'contato', 'contatos')
     return dados
 
 
@@ -127,6 +129,8 @@ def modulos(usuario):
                  url=reverse('chamado_lista'), perfis=TODOS),
             dict(titulo='Correspondências', texto='Entrada, aviso e retirada', icone='📬', cor='ciano',
                  url=reverse('correspondencia_lista'), perfis=TODOS),
+            dict(titulo='Mural de contatos', texto='Telefones de eletricista, encanador e outros prestadores', icone='📌', cor='marinho',
+                 url=reverse('mural'), perfis=TODOS),
         ]),
         ('Relatórios', [
             dict(titulo='Relatórios', texto='Despesas, inadimplência, chamados e contratos', icone='📊', cor='marinho',

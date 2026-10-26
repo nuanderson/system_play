@@ -47,6 +47,10 @@ Usa SQLite quando `DB_NAME` não está definido.
 - Backups do volume `pgdata` (por exemplo, `docker compose exec db pg_dump`) antes de usar com dados reais.
 - Arquivos enviados (`media`) ainda não são servidos em produção. Isso entra junto com contratos e chamados.
 
+## Mural de contatos
+
+Seção Operação. Quadro em estilo post-it com os telefones de prestadores (elétrica, hidráulica, ar-condicionado, elevador, limpeza, segurança, internet, chaveiro, dedetização, jardinagem, emergência e outros). Todos os usuários logados veem, com link para ligar e, quando marcado, para o WhatsApp; só a equipe e o síndico cadastram, editam e removem. Tem filtro por categoria e busca por nome, telefone ou observação.
+
 ## Fase 5 (feita): relatórios
 
 Só o síndico acessa (`/relatorios/`). Seis relatórios, todos com impressão e exportação em CSV (separador `;`, vírgula decimal e acentos corretos, para abrir direto no Excel): despesas do mês (por categoria e evolução de 12 meses), rateio por unidade, inadimplência e cobranças (por locatário, por faixa de atraso e resumo mensal), chamados (volume, tempo médio de resolução e custo num período), contratos (vigentes, vencimentos, receita mensal e unidades sem contrato) e correspondências (recebimentos, retiradas e o que está parado). Textos digitados por pessoas são protegidos contra injeção de fórmula no Excel. O cálculo fica em `relatorios/dados.py`.

@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block titulo %}Mural de contatos · Edifício Uruz{% endblock %}
+{% block h1 %}Mural de contatos{% endblock %}
+{% block conteudo %}
+<style>
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .chip { display:inline-block; padding:5px 14px; border:1px solid var(--borda); border-radius:999px; background:var(--cartao); color:var(--texto); text-decoration:none; font-size:.9rem; }
+  .chip:hover { border-color:var(--marca); color:var(--marca); }
+  .chip.ativo { background:var(--marca); border-color:var(--marca); color:#fff; font-weight:600; }
+  .mural { display:grid; grid-template-columns:repeat(auto-fill,minmax(225px,1fr)); gap:30px 24px; padding:34px 22px 26px; border:1px solid var(--borda); border-radius:14px; background-color:var(--cartao); background-image:radial-gradient(var(--borda) 1.2px, transparent 1.2px); background-size:20px 20px; }
+  .postit { position:relative; min-height:178px; padding:30px 16px 14px; color:#2b2b2b; border-radius:2px 2px 16px 2px; box-shadow:0 8px 16px rgba(0,0,0,.25), inset 0 -22px 26px -22px rgba(0,0,0,.14); transform:rotate(var(--giro, 0deg)); transition:transform .15s ease, box-shadow .15s ease; }
+  .postit:nth-child(3n+1) { --giro:-1.6deg; }
+  .postit:nth-child(3n+2) { --giro:1.2deg; }
+  .postit:nth-child(3n) { --giro:.5deg; }
+  .postit:hover, .postit:focus-within { transform:rotate(0deg) translateY(-4px) scale(1.02); box-shadow:0 14px 24px rgba(0,0,0,.3), inset 0 -22px 26px -22px rgba(0,0,0,.14); z-index:2; }
+  .postit::before { content:""; position:absolute; top:-11px; left:50%; width:72px; height:22px; background:rgba(255,255,255,.55); box-shadow:0 1px 3px rgba(0,0,0,.18); transform:translateX(-50%) rotate(-3deg); }
+  .postit.cor0 { background:#fff3a0; }
+  .postit.cor1 { background:#ffc9de; }
+  .postit.cor2 { background:#bfe8ff; }
+  .postit.cor3 { background:#c9f2c7; }
+  .postit.cor4 { background:#ffd9a8; }
+  .postit .categoria { font-family:"Segoe Print","Bradley Hand","Comic Sans MS",cursive; font-size:.95rem; font-weight:700; opacity:.75; }
+  .postit .nome { font-weight:700; font-size:1.15rem; line-height:1.2; margin:4px 0 8px; word-break:break-word; }
+  .postit .telefone { display:block; font-size:1.3rem; font-weight:700; color:#0b3a66; text-decoration:none; font-variant-numeric:tabular-nums; }
+  .postit .telefone:hover { text-decoration:underline; }
+  .postit .obs { margin-top:8px; font-size:.88rem; opacity:.85; }
+  .postit .zap { display:inline-block; margin-top:8px; padding:2px 10px; border-radius:999px; background:#1b8a4b; color:#fff; font-size:.8rem; font-weight:700; text-decoration:none; }
+  .postit .zap:hover { background:#146b3a; color:#fff; }
+  .postit .cantos { position:absolute; top:8px; right:8px; display:flex; gap:4px; opacity:.55; transition:opacity .12s; }
+  .postit:hover .cantos, .postit:focus-within .cantos { opacity:1; }
+  .pi-btn { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:0; border-radius:6px; background:rgba(255,255,255,.65); color:#2b2b2b; cursor:pointer; padding:0; }
+  .pi-btn:hover { background:#fff; color:#b42318; }
+  .pi-btn.edit:hover { color:#0b3a66; }
+  .pi-btn svg { width:15px; height:15px; margin:0; }
+  .cantos form { margin:0; }
+  .vazio { text-align:center; padding:36px 12px; color:var(--suave); }
+  @media (prefers-reduced-motion: reduce) { .postit, .postit:hover { transition:none; transform:none; } }
+  @media print { .postit { box-shadow:none; border:1px solid #999; transform:none; break-inside:avoid; } .postit::before, .cantos { display:none; } .mural { background-image:none; } }
+</style>
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3 no-print">
+  {% if user.e_equipe %}
+    <a class="btn btn-marca" href="{% url 'contato_criar' %}{% if categoria_escolhida %}?categoria={{ categoria_escolhida }}{% endif %}">{% include 'partials/icone.html' with nome='mais' %}Novo contato</a>
+  {% endif %}
+  <form method="get" class="ms-auto d-flex gap-2">
+    {% if categoria_escolhida %}<input type="hidden" name="categoria" value="{{ categoria_escolhida }}">{% endif %}
+    <input type="search" name="q" value="{{ busca }}" placeholder="Buscar nome ou telefone" style="padding:7px 10px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; min-width:210px">
+    <button class="btn btn-acao" type="submit">Buscar</button>
+  </form>
+</div>
+
+{% if categorias|length > 1 %}
+  <div class="chips no-print">
+    <a class="chip{% if not categoria_escolhida %} ativo{% endif %}" href="{% url 'mural' %}{% if busca %}?q={{ busca|urlencode }}{% endif %}">Todos ({{ total }})</a>
+    {% for valor, nome in categorias %}
+      <a class="chip{% if valor == categoria_escolhida %} ativo{% endif %}" href="?categoria={{ valor }}{% if busca %}&q={{ busca|urlencode }}{% endif %}">{{ nome }}</a>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if contatos %}
+  <div class="mural">
+    {% for c in contatos %}
+      <article class="postit cor{{ c.cor }}">
+        {% if user.e_equipe %}
+          <div class="cantos no-print">
+            <a class="pi-btn edit" href="{% url 'contato_editar' c.pk %}" title="Editar" aria-label="Editar {{ c.nome }}">{% include 'partials/icone.html' with nome='lapis' %}</a>
+            <form method="post" action="{% url 'contato_excluir' c.pk %}" onsubmit="return confirm('Tirar {{ c.nome|escapejs }} do mural?');">{% csrf_token %}
+              <button class="pi-btn" type="submit" title="Remover" aria-label="Remover {{ c.nome }}">{% include 'partials/icone.html' with nome='lixeira' %}</button>
+            </form>
+          </div>
+        {% endif %}
+        <div class="categoria">{{ c.get_categoria_display }}</div>
+        <div class="nome">{{ c.nome }}</div>
+        <a class="telefone" href="{{ c.link_telefone }}">{{ c.telefone_exibido }}</a>
+        {% if c.link_whatsapp %}<a class="zap" href="{{ c.link_whatsapp }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}
+        {% if c.observacoes %}<div class="obs">{{ c.observacoes }}</div>{% endif %}
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="cartao vazio">
+    {% if busca or categoria_escolhida %}
+      <p class="mb-0">Nenhum contato encontrado. <a href="{% url 'mural' %}">Ver todos</a></p>
+    {% else %}
+      <p style="font-size:2rem; margin:0">📌</p>
+      <p class="mb-2">O mural ainda está vazio.</p>
+      {% if user.e_equipe %}<p class="mb-0">Cole aqui o telefone do eletricista, do encanador, do técnico do ar-condicionado e dos demais prestadores.</p>{% endif %}
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

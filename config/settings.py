@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'chamados',
     'correspondencias',
     'relatorios',
+    'contatos',
 ]
 
 MIDDLEWARE = [
