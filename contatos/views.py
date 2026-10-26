@@ -6,13 +6,14 @@ from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, ListView, UpdateView
 
-from core.permissions import EquipeRequiredMixin
+from core.permissions import PermissaoRequiredMixin
 
 from .forms import ContatoForm
 from .models import Contato
 
 
-class Mural(LoginRequiredMixin, ListView):
+class Mural(PermissaoRequiredMixin, ListView):
+    permissao = 'mural_ver'
     """Todos os usuários logados veem o mural. Só a equipe e o síndico mexem nele."""
     template_name = 'contatos/mural.html'
     context_object_name = 'contatos'
@@ -40,7 +41,8 @@ class Mural(LoginRequiredMixin, ListView):
         return contexto
 
 
-class ContatoCriar(EquipeRequiredMixin, CreateView):
+class ContatoCriar(PermissaoRequiredMixin, CreateView):
+    permissao = 'mural_editar'
     model = Contato
     form_class = ContatoForm
     template_name = 'form.html'
@@ -59,7 +61,8 @@ class ContatoCriar(EquipeRequiredMixin, CreateView):
         return redirect(self.success_url)
 
 
-class ContatoEditar(EquipeRequiredMixin, UpdateView):
+class ContatoEditar(PermissaoRequiredMixin, UpdateView):
+    permissao = 'mural_editar'
     model = Contato
     form_class = ContatoForm
     template_name = 'form.html'
@@ -71,7 +74,9 @@ class ContatoEditar(EquipeRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class ContatoExcluir(EquipeRequiredMixin, View):
+class ContatoExcluir(PermissaoRequiredMixin, View):
+    permissao = 'mural_editar'
+
     def post(self, request, pk):
         contato = get_object_or_404(Contato, pk=pk)
         nome = contato.nome

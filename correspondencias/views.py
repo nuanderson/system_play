@@ -1,7 +1,6 @@
 import os
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import FileResponse, Http404
@@ -12,7 +11,7 @@ from django.views import View
 from django.views.generic import CreateView, ListView, UpdateView
 
 from cadastros.models import Unidade
-from core.permissions import EquipeRequiredMixin
+from core.permissions import PermissaoRequiredMixin
 
 from .forms import BaixaForm, CorrespondenciaForm, DevolucaoForm
 from .models import Correspondencia
@@ -20,14 +19,15 @@ from .models import Correspondencia
 
 def correspondencias_visiveis(usuario):
     """Equipe e síndico veem tudo. Os demais veem só o que chegou para a própria unidade."""
-    if usuario.e_equipe:
+    if usuario.pode('correspondencias_gerenciar'):
         return Correspondencia.objects.all()
     if usuario.unidade_id:
         return Correspondencia.objects.filter(unidade_id=usuario.unidade_id)
     return Correspondencia.objects.none()
 
 
-class CorrespondenciaLista(LoginRequiredMixin, ListView):
+class CorrespondenciaLista(PermissaoRequiredMixin, ListView):
+    permissao = ('correspondencias_gerenciar', 'correspondencias_ver_proprias')
     template_name = 'correspondencias/correspondencia_lista.html'
     context_object_name = 'itens'
     paginate_by = 30
@@ -41,7 +41,7 @@ class CorrespondenciaLista(LoginRequiredMixin, ListView):
         if tipo in Correspondencia.Tipo.values:
             consulta = consulta.filter(tipo=tipo)
         unidade = self.request.GET.get('unidade', '')
-        if self.request.user.e_equipe and unidade.isdigit():
+        if self.request.user.pode('correspondencias_gerenciar') and unidade.isdigit():
             consulta = consulta.filter(unidade_id=int(unidade))
         busca = self.request.GET.get('q', '').strip()
         if busca:
@@ -57,12 +57,13 @@ class CorrespondenciaLista(LoginRequiredMixin, ListView):
             ),
             situacoes=[('todas', 'Todas')] + list(Correspondencia.Status.choices),
             tipos=Correspondencia.Tipo.choices,
-            unidades=Unidade.objects.all() if self.request.user.e_equipe else [],
+            unidades=Unidade.objects.all() if self.request.user.pode('correspondencias_gerenciar') else [],
         )
         return contexto
 
 
-class CorrespondenciaCriar(EquipeRequiredMixin, CreateView):
+class CorrespondenciaCriar(PermissaoRequiredMixin, CreateView):
+    permissao = 'correspondencias_gerenciar'
     model = Correspondencia
     form_class = CorrespondenciaForm
     template_name = 'form.html'
@@ -78,7 +79,8 @@ class CorrespondenciaCriar(EquipeRequiredMixin, CreateView):
         return redirect('correspondencia_detalhe', pk=correspondencia.pk)
 
 
-class CorrespondenciaEditar(EquipeRequiredMixin, UpdateView):
+class CorrespondenciaEditar(PermissaoRequiredMixin, UpdateView):
+    permissao = 'correspondencias_gerenciar'
     model = Correspondencia
     form_class = CorrespondenciaForm
     template_name = 'form.html'
@@ -95,21 +97,23 @@ class CorrespondenciaEditar(EquipeRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class CorrespondenciaDetalhe(LoginRequiredMixin, View):
+class CorrespondenciaDetalhe(PermissaoRequiredMixin, View):
+    permissao = ('correspondencias_gerenciar', 'correspondencias_ver_proprias')
     def get(self, request, pk):
         item = get_object_or_404(correspondencias_visiveis(request.user), pk=pk)
         return self.renderizar(request, item)
 
     @staticmethod
     def renderizar(request, item, form_baixa=None, form_devolucao=None):
-        contexto = dict(item=item, equipe=request.user.e_equipe)
-        if request.user.e_equipe and item.aguardando:
+        contexto = dict(item=item, equipe=request.user.pode('correspondencias_gerenciar'))
+        if request.user.pode('correspondencias_gerenciar') and item.aguardando:
             contexto['form_baixa'] = form_baixa or BaixaForm(correspondencia=item)
             contexto['form_devolucao'] = form_devolucao or DevolucaoForm()
         return render(request, 'correspondencias/correspondencia_detalhe.html', contexto)
 
 
-class DarBaixa(EquipeRequiredMixin, View):
+class DarBaixa(PermissaoRequiredMixin, View):
+    permissao = 'correspondencias_gerenciar'
     def post(self, request, pk):
         item = get_object_or_404(Correspondencia, pk=pk, status=Correspondencia.Status.AGUARDANDO)
         form = BaixaForm(request.POST, correspondencia=item)
@@ -125,7 +129,8 @@ class DarBaixa(EquipeRequiredMixin, View):
         return redirect('correspondencia_detalhe', pk=item.pk)
 
 
-class Devolver(EquipeRequiredMixin, View):
+class Devolver(PermissaoRequiredMixin, View):
+    permissao = 'correspondencias_gerenciar'
     def post(self, request, pk):
         item = get_object_or_404(Correspondencia, pk=pk, status=Correspondencia.Status.AGUARDANDO)
         form = DevolucaoForm(request.POST)
@@ -140,7 +145,8 @@ class Devolver(EquipeRequiredMixin, View):
         return redirect('correspondencia_detalhe', pk=item.pk)
 
 
-class FotoVer(LoginRequiredMixin, View):
+class FotoVer(PermissaoRequiredMixin, View):
+    permissao = ('correspondencias_gerenciar', 'correspondencias_ver_proprias')
     """A foto só é entregue a quem pode ver a correspondência. Não há endereço público."""
 
     def get(self, request, pk):

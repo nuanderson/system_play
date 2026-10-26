@@ -3,7 +3,7 @@
 {% block h1 %}Contratos{% endblock %}
 {% block conteudo %}
 <form method="get" class="d-flex flex-wrap align-items-center gap-2 mb-3">
-  {% if user.e_sindico %}
+  {% if pode.contratos_editar %}
     <a class="btn btn-marca" href="{% url 'contrato_criar' %}">{% include 'partials/icone.html' with nome='mais' %}Novo contrato</a>
   {% endif %}
   <span class="ms-auto"></span>

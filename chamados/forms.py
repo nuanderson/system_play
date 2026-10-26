@@ -51,7 +51,7 @@ class ChamadoForm(forms.ModelForm):
     def __init__(self, *args, usuario, **kwargs):
         super().__init__(*args, **kwargs)
         self.usuario = usuario
-        if usuario.e_equipe:
+        if usuario.pode('chamados_gerenciar'):
             self.fields['unidade'].queryset = Unidade.objects.filter(ativa=True)
             self.fields['unidade'].empty_label = 'Área comum do prédio'
         else:
@@ -85,7 +85,7 @@ class ComentarioForm(forms.ModelForm):
 
     def __init__(self, *args, usuario, **kwargs):
         super().__init__(*args, **kwargs)
-        if not usuario.e_equipe:
+        if not usuario.pode('chamados_gerenciar'):
             del self.fields['interno']
 
 

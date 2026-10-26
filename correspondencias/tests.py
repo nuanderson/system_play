@@ -34,13 +34,14 @@ class Base(TestCase):
         self.sala2 = Unidade.objects.get(nome='Sala 02')
         self.sindico = Usuario.objects.create_user('sindico', password='x', perfil=Usuario.Perfil.SINDICO)
         self.equipe = Usuario.objects.create_user('equipe', password='x', perfil=Usuario.Perfil.EQUIPE)
+        self.administrativo = Usuario.objects.create_user('administrativo', password='x', perfil=Usuario.Perfil.ADMINISTRATIVO)
         self.resp1 = Usuario.objects.create_user('r1', password='x', perfil=Usuario.Perfil.LOCATARIO, unidade=self.sala1)
         self.membro1 = Usuario.objects.create_user('m1', password='x', perfil=Usuario.Perfil.MEMBRO, unidade=self.sala1)
         self.resp2 = Usuario.objects.create_user('r2', password='x', perfil=Usuario.Perfil.LOCATARIO, unidade=self.sala2)
         self.sem_unidade = Usuario.objects.create_user('sem', password='x', perfil=Usuario.Perfil.MEMBRO)
 
     def nova(self, unidade=None, **extra):
-        dados = dict(unidade=unidade or self.sala1, tipo='encomenda', destinatario='Maria', registrado_por=self.equipe)
+        dados = dict(unidade=unidade or self.sala1, tipo='encomenda', destinatario='Maria', registrado_por=self.administrativo)
         dados.update(extra)
         return Correspondencia.objects.create(**dados)
 
@@ -53,20 +54,20 @@ class Base(TestCase):
 
 class RegistroTests(Base):
     def test_equipe_registra(self):
-        self.client.force_login(self.equipe)
+        self.client.force_login(self.administrativo)
         resposta = self.client.post(reverse('correspondencia_criar'), self.dados_form())
         item = Correspondencia.objects.get()
         self.assertRedirects(resposta, reverse('correspondencia_detalhe', args=[item.pk]))
-        self.assertEqual((item.unidade, item.status, item.registrado_por), (self.sala1, 'aguardando', self.equipe))
+        self.assertEqual((item.unidade, item.status, item.registrado_por), (self.sala1, 'aguardando', self.administrativo))
         self.assertEqual(item.numero, f'C{item.pk:04d}')
 
     def test_salvar_e_registrar_outra_volta_ao_formulario(self):
-        self.client.force_login(self.equipe)
+        self.client.force_login(self.administrativo)
         resposta = self.client.post(reverse('correspondencia_criar'), self.dados_form(outra='1'))
         self.assertRedirects(resposta, reverse('correspondencia_criar'))
 
     def test_registra_com_foto_e_recusa_tipo_invalido(self):
-        self.client.force_login(self.equipe)
+        self.client.force_login(self.administrativo)
         foto = SimpleUploadedFile('etiqueta.png', PNG, content_type='image/png')
         self.client.post(reverse('correspondencia_criar'), self.dados_form(foto=foto))
         self.assertTrue(Correspondencia.objects.get().tem_foto)
@@ -75,7 +76,7 @@ class RegistroTests(Base):
         self.assertEqual(Correspondencia.objects.count(), 1)
 
     def test_data_futura_e_recusada(self):
-        self.client.force_login(self.equipe)
+        self.client.force_login(self.administrativo)
         self.client.post(reverse('correspondencia_criar'), self.dados_form(recebido_em=agora_formatado(timedelta(days=2))))
         self.assertFalse(Correspondencia.objects.exists())
 
@@ -106,7 +107,7 @@ class VisibilidadeTests(Base):
         self.assertNotContains(self.client.get(reverse('correspondencia_lista')), 'Para a sala')
 
     def test_equipe_e_sindico_veem_todas(self):
-        for usuario in (self.equipe, self.sindico):
+        for usuario in (self.administrativo, self.sindico):
             self.client.force_login(usuario)
             resposta = self.client.get(reverse('correspondencia_lista'))
             self.assertContains(resposta, 'Para a sala 1')
@@ -115,7 +116,7 @@ class VisibilidadeTests(Base):
     def test_lista_padrao_mostra_so_aguardando_e_busca_funciona(self):
         self.minha.status = 'retirada'
         self.minha.save()
-        self.client.force_login(self.equipe)
+        self.client.force_login(self.administrativo)
         self.assertNotContains(self.client.get(reverse('correspondencia_lista')), 'Para a sala 1')
         self.assertContains(self.client.get(reverse('correspondencia_lista') + '?situacao=todas'), 'Para a sala 1')
         resposta = self.client.get(reverse('correspondencia_lista') + '?situacao=todas&q=sala 2')
@@ -126,7 +127,7 @@ class VisibilidadeTests(Base):
         self.client.force_login(self.resp1)
         resposta = self.client.get(reverse('correspondencia_detalhe', args=[self.minha.pk]))
         self.assertNotContains(resposta, 'Dar baixa')
-        self.client.force_login(self.equipe)
+        self.client.force_login(self.administrativo)
         self.assertContains(self.client.get(reverse('correspondencia_detalhe', args=[self.minha.pk])), 'Dar baixa')
 
 
@@ -142,19 +143,19 @@ class BaixaTests(Base):
         return self.client.post(reverse('correspondencia_baixa', args=[self.item.pk]), dados)
 
     def test_equipe_da_baixa(self):
-        self.baixar(self.equipe)
+        self.baixar(self.administrativo)
         self.item.refresh_from_db()
-        self.assertEqual((self.item.status, self.item.retirada_por, self.item.baixa_por), ('retirada', 'João da Silva', self.equipe))
+        self.assertEqual((self.item.status, self.item.retirada_por, self.item.baixa_por), ('retirada', 'João da Silva', self.administrativo))
         self.assertIsNotNone(self.item.retirada_em)
 
     def test_baixa_exige_quem_retirou(self):
-        self.baixar(self.equipe, retirada_por='')
+        self.baixar(self.administrativo, retirada_por='')
         self.item.refresh_from_db()
         self.assertEqual(self.item.status, 'aguardando')
 
     def test_retirada_nao_pode_ser_antes_do_recebimento_nem_no_futuro(self):
-        self.baixar(self.equipe, retirada_em=agora_formatado(-timedelta(days=5)))
-        self.baixar(self.equipe, retirada_em=agora_formatado(timedelta(days=1)))
+        self.baixar(self.administrativo, retirada_em=agora_formatado(-timedelta(days=5)))
+        self.baixar(self.administrativo, retirada_em=agora_formatado(timedelta(days=1)))
         self.item.refresh_from_db()
         self.assertEqual(self.item.status, 'aguardando')
 
@@ -164,13 +165,13 @@ class BaixaTests(Base):
         self.assertEqual(self.item.status, 'aguardando')
 
     def test_nao_da_baixa_duas_vezes(self):
-        self.baixar(self.equipe)
-        self.assertEqual(self.baixar(self.equipe, retirada_por='Outro').status_code, 404)
+        self.baixar(self.administrativo)
+        self.assertEqual(self.baixar(self.administrativo, retirada_por='Outro').status_code, 404)
         self.item.refresh_from_db()
         self.assertEqual(self.item.retirada_por, 'João da Silva')
 
     def test_devolucao_exige_motivo(self):
-        self.client.force_login(self.equipe)
+        self.client.force_login(self.administrativo)
         url = reverse('correspondencia_devolver', args=[self.item.pk])
         self.client.post(url, {'baixa_obs': ''})
         self.item.refresh_from_db()
@@ -180,10 +181,10 @@ class BaixaTests(Base):
         self.assertEqual((self.item.status, self.item.baixa_obs), ('devolvida', 'Destinatário mudou de endereço'))
 
     def test_so_edita_enquanto_aguarda(self):
-        self.client.force_login(self.equipe)
+        self.client.force_login(self.administrativo)
         url = reverse('correspondencia_editar', args=[self.item.pk])
         self.assertEqual(self.client.get(url).status_code, 200)
-        self.baixar(self.equipe)
+        self.baixar(self.administrativo)
         self.assertEqual(self.client.get(url).status_code, 404)
 
 
@@ -224,7 +225,7 @@ class InicioTests(Base):
     def test_indicadores_da_equipe_e_do_sindico(self):
         self.nova()
         self.nova(recebido_em=timezone.now() - timedelta(days=10))
-        for usuario in (self.sindico, self.equipe):
+        for usuario in (self.sindico, self.administrativo):
             self.client.force_login(usuario)
             resposta = self.client.get(reverse('inicio'))
             self.assertContains(resposta, '2 aguardando retirada')

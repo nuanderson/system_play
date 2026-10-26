@@ -2,7 +2,7 @@
 {% block titulo %}Correspondências · Edifício Uruz{% endblock %}
 {% block h1 %}Correspondências{% endblock %}
 {% block conteudo %}
-{% if user.e_equipe %}
+{% if pode.correspondencias_gerenciar %}
   <p><a class="btn btn-marca" href="{% url 'correspondencia_criar' %}">{% include 'partials/icone.html' with nome='mais' %}Registrar correspondência</a></p>
 {% endif %}
 

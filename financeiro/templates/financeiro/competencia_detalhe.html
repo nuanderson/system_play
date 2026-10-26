@@ -96,7 +96,9 @@
       </tfoot>
     </table>
   </div>
-  {% if competencia.status == 'calculada' %}
+  {% if competencia.status == 'calculada' and not pode.rateio_aprovar %}
+    <p class="ajuda" style="margin-top:12px">Rateio calculado. Falta a aprovação do síndico para gerar as cobranças.</p>
+  {% elif competencia.status == 'calculada' %}
     <form method="post" action="{% url 'rateio_aprovar' competencia.pk %}" style="margin-top:12px" onsubmit="return confirm('Aprovar o rateio e gerar as cobranças de condomínio?');">{% csrf_token %}
       <button type="submit">Aprovar e gerar cobranças</button>
       <span class="ajuda">Depois de aprovado, o mês fica travado. O vencimento padrão é o dia do contrato, no mês seguinte.</span>

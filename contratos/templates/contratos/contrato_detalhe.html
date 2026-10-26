@@ -11,7 +11,7 @@
   <span class="selo {{ contrato.status }}">{{ contrato.get_status_display }}</span>
   {% if contrato.situacao_vencimento == 'vencido' %}<span class="selo vencido">Vencido</span>
   {% elif contrato.situacao_vencimento == 'a_vencer' %}<span class="selo a_vencer">Vence em {{ contrato.dias_para_vencer }} dias</span>{% endif %}
-  {% if user.e_sindico %}<a class="btn btn-sm btn-acao ms-2" href="{% url 'contrato_editar' contrato.pk %}">{% include 'partials/icone.html' with nome='lapis' %}Editar</a>{% endif %}
+  {% if pode.contratos_editar %}<a class="btn btn-sm btn-acao ms-2" href="{% url 'contrato_editar' contrato.pk %}">{% include 'partials/icone.html' with nome='lapis' %}Editar</a>{% endif %}
 </p>
 
 <div class="cartao" style="margin-bottom:16px">
@@ -45,7 +45,7 @@
           <td><a href="{% url 'documento_baixar' d.pk %}">{{ d.nome_original|default:"baixar" }}</a></td>
           <td>{{ d.enviado_em|date:"d/m/Y H:i" }}</td>
           <td>
-            {% if user.e_sindico %}
+            {% if pode.contratos_editar %}
               <form class="inline" method="post" action="{% url 'documento_excluir' d.pk %}" onsubmit="return confirm('Remover este documento?');">{% csrf_token %}<button class="btn btn-sm btn-perigo" type="submit">{% include 'partials/icone.html' with nome='lixeira' %}Remover</button></form>
             {% endif %}
           </td>

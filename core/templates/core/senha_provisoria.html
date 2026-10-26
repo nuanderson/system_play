@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block titulo %}Senha provisória · Edifício Uruz{% endblock %}
+{% block h1 %}Senha provisória{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{{ voltar }}">Voltar</a>
+{% endblock %}
+{% block conteudo %}
+<div class="cartao" style="max-width:520px">
+  <p>Acesso de <strong>{{ nome }}</strong>. Passe estes dados à pessoa:</p>
+  <dl class="dados mb-3">
+    <dt>Usuário</dt><dd><strong>{{ login }}</strong></dd>
+    <dt>Senha provisória</dt><dd><code style="font-size:1.3rem; letter-spacing:.06em; user-select:all; color:var(--marinho); background:rgba(0,190,245,.12); padding:2px 8px; border-radius:6px">{{ senha }}</code></dd>
+  </dl>
+  <p class="mb-2"><strong>Anote agora: esta senha não aparece de novo.</strong> No primeiro acesso, o sistema pede que a pessoa escolha a senha dela.</p>
+  <p class="suave mb-3">Se perder, gere outra em "Nova senha".</p>
+  <a class="btn btn-marca" href="{{ voltar }}">Concluído</a>
+</div>
+{% endblock %}

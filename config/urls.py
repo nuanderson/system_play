@@ -11,6 +11,7 @@ urlpatterns = [
     path('entrar/', auth_views.LoginView.as_view(), name='login'),
     path('sair/', auth_views.LogoutView.as_view(), name='logout'),
     path('', InicioView.as_view(), name='inicio'),
+    path('', include('core.urls')),
     path('cadastros/', include('cadastros.urls')),
     path('contratos/', include('contratos.urls')),
     path('financeiro/', include('financeiro.urls')),

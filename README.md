@@ -47,6 +47,21 @@ Usa SQLite quando `DB_NAME` não está definido.
 - Backups do volume `pgdata` (por exemplo, `docker compose exec db pg_dump`) antes de usar com dados reais.
 - Arquivos enviados (`media`) ainda não são servidos em produção. Isso entra junto com contratos e chamados.
 
+## Perfis e acessos
+
+Seis perfis. A tabela completa de permissões está num único arquivo, `core/acesso.py`; para mudar o acesso de um perfil, basta acrescentar ou tirar o perfil da permissão ali (há testes que cobrem cada tela para cada perfil).
+
+| Perfil | Pode |
+|---|---|
+| **Síndico** | Tudo, inclusive aprovar o rateio e gerenciar usuários |
+| **Administrativo** | Contratos, locatários, condomínio e rateio (prepara, mas não aprova), cobranças, correspondências, relatórios, mural |
+| **Equipe e portaria** | Chamados (todos) e mural |
+| **Consulta** | Só leitura: relatórios, contratos e cobranças |
+| **Responsável da unidade** | Contratos e cobranças da própria unidade, chamados e correspondências da unidade, mural, e cadastra/desativa as pessoas da própria unidade |
+| **Membro da unidade** | Chamados e correspondências da unidade, mural |
+
+Usuários: o síndico cria e gerencia em **Usuários e acessos**; o responsável da unidade gerencia **Pessoas da unidade**. Quem é cadastrado recebe uma **senha provisória**, mostrada uma única vez, e só consegue usar o sistema depois de escolher a própria senha. Desativar um usuário tira o acesso na hora e mantém o histórico. O sistema não deixa desativar a si mesmo, mudar o próprio perfil nem ficar sem síndico ativo. A sessão expira em 12 horas, e o nome no alto da página leva à troca de senha.
+
 ## Mural de contatos
 
 Seção Operação. Quadro em estilo post-it com os telefones de prestadores (elétrica, hidráulica, ar-condicionado, elevador, limpeza, segurança, internet, chaveiro, dedetização, jardinagem, emergência e outros). Todos os usuários logados veem, com link para ligar e, quando marcado, para o WhatsApp; só a equipe e o síndico cadastram, editam e removem. Tem filtro por categoria e busca por nome, telefone ou observação.

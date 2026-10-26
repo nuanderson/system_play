@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block titulo %}Pessoas da unidade · Edifício Uruz{% endblock %}
+{% block h1 %}Pessoas da unidade{% endblock %}
+{% block conteudo %}
+<p class="suave">{{ unidade }} · quem pode entrar no sistema por esta unidade. Elas veem os chamados e as correspondências da unidade e podem abrir chamados.</p>
+<p><a class="btn btn-marca" href="{% url 'membro_criar' %}">{% include 'partials/icone.html' with nome='mais' %}Adicionar pessoa</a></p>
+
+<div class="cartao">
+  <div class="table-responsive">
+    <table class="table table-uruz table-hover align-middle mb-0">
+      <thead><tr><th>Nome</th><th>Usuário</th><th>E-mail</th><th>Último acesso</th><th></th></tr></thead>
+      <tbody>
+        {% for r in responsaveis %}
+          <tr><td>{{ r.get_full_name|default:r.username }} <span class="badge text-bg-primary">responsável</span></td><td>{{ r.username }}</td><td>{{ r.email|default:"—" }}</td><td>{{ r.last_login|date:"d/m/Y H:i"|default:"—" }}</td><td></td></tr>
+        {% endfor %}
+        {% for m in membros %}
+          <tr{% if not m.is_active %} style="opacity:.6"{% endif %}>
+            <td>{{ m.get_full_name|default:m.username }}
+              {% if not m.is_active %}<span class="badge text-bg-secondary">desativado</span>{% endif %}
+              {% if m.trocar_senha %}<span class="badge text-bg-warning">ainda não entrou</span>{% endif %}</td>
+            <td>{{ m.username }}</td><td>{{ m.email|default:"—" }}</td>
+            <td>{{ m.last_login|date:"d/m/Y H:i"|default:"nunca entrou" }}</td>
+            <td class="text-end">
+              <div class="acoes">
+                {% if m.is_active %}
+                  <form method="post" action="{% url 'membro_senha' m.pk %}" onsubmit="return confirm('Gerar uma nova senha provisória para {{ m.username|escapejs }}?');">{% csrf_token %}
+                    <button class="btn btn-sm btn-acao" type="submit">Nova senha</button></form>
+                {% endif %}
+                <form method="post" action="{% url 'membro_alternar' m.pk %}" onsubmit="return confirm('{% if m.is_active %}Desativar o acesso de{% else %}Liberar o acesso de{% endif %} {{ m.username|escapejs }}?');">{% csrf_token %}
+                  <button class="btn btn-sm {% if m.is_active %}btn-perigo{% else %}btn-acao{% endif %}" type="submit">{% if m.is_active %}Desativar{% else %}Reativar{% endif %}</button></form>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          {% if not responsaveis %}<tr><td colspan="5" class="suave">Ninguém cadastrado ainda.</td></tr>{% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="ajuda mt-2">Quem sai da empresa deve ser desativado aqui para perder o acesso na hora.</p>
+{% endblock %}

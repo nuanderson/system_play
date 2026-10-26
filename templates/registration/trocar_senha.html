@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block titulo %}Alterar senha · Edifício Uruz{% endblock %}
+{% block conteudo %}
+<div class="cartao" style="max-width:520px; margin:12px auto 0">
+  <h1 style="margin-bottom:12px">{% if obrigatoria %}Escolha a sua senha{% else %}Alterar minha senha{% endif %}</h1>
+  {% if obrigatoria %}<p class="suave">Você entrou com uma senha provisória. Antes de continuar, escolha uma senha só sua.</p>{% endif %}
+  <form method="post">{% csrf_token %}
+    {% for campo in form %}
+      <div class="campo">
+        <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        {{ campo }}
+        {% if campo.help_text %}<div class="ajuda">{{ campo.help_text|safe }}</div>{% endif %}
+        {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <button type="submit">Salvar senha</button>
+    {% if not obrigatoria %}<a class="btn btn-acao" href="{% url 'inicio' %}">Cancelar</a>{% endif %}
+  </form>
+</div>
+{% endblock %}

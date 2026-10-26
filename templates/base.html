@@ -131,7 +131,7 @@
       <a class="marca" href="{% url 'inicio' %}"><img src="{% static 'img/simbolo.png' %}" alt=""><span>Edifício Uruz<small>Play Participações</small></span></a>
       {% if user.is_authenticated %}
         <span class="espaco"></span>
-        <span class="usuario">{{ user }}<small> · {{ user.get_perfil_display }}</small></span>
+        <a class="usuario" href="{% url 'trocar_senha' %}" title="Alterar minha senha" style="text-decoration:none">{{ user }}<small> · {{ user.get_perfil_display }}</small></a>
         <form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="sec sair" type="submit">Sair</button></form>
       {% endif %}
     </nav>

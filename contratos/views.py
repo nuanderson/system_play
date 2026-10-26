@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
-from core.permissions import SindicoRequiredMixin
+from core.permissions import PermissaoRequiredMixin
 
 from .forms import ContratoForm, DocumentoForm
 from .models import Contrato, DocumentoContrato
@@ -17,9 +17,9 @@ from .models import Contrato, DocumentoContrato
 
 def contratos_visiveis(usuario):
     """Síndico vê todos. O responsável da unidade vê só os contratos da própria unidade."""
-    if usuario.e_sindico:
+    if usuario.pode('contratos_ver_todos'):
         return Contrato.objects.all()
-    if usuario.perfil == usuario.Perfil.LOCATARIO and usuario.unidade_id:
+    if usuario.pode('contratos_ver_proprio') and usuario.unidade_id:
         return Contrato.objects.filter(unidade_id=usuario.unidade_id)
     return Contrato.objects.none()
 
@@ -30,7 +30,7 @@ class ContratoVisivelMixin(LoginRequiredMixin):
 
     def dispatch(self, request, *args, **kwargs):
         usuario = request.user
-        if usuario.is_authenticated and not (usuario.e_sindico or usuario.perfil == usuario.Perfil.LOCATARIO):
+        if usuario.is_authenticated and not usuario.pode('contratos_ver_todos', 'contratos_ver_proprio'):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
@@ -60,12 +60,13 @@ class ContratoDetalhe(ContratoVisivelMixin, DetailView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto['documentos'] = self.object.documentos.all()
-        if self.request.user.e_sindico:
+        if self.request.user.pode('contratos_editar'):
             contexto['form_documento'] = DocumentoForm()
         return contexto
 
 
-class ContratoCriar(SindicoRequiredMixin, CreateView):
+class ContratoCriar(PermissaoRequiredMixin, CreateView):
+    permissao = 'contratos_editar'
     model = Contrato
     form_class = ContratoForm
     template_name = 'form.html'
@@ -79,7 +80,8 @@ class ContratoCriar(SindicoRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class ContratoEditar(SindicoRequiredMixin, UpdateView):
+class ContratoEditar(PermissaoRequiredMixin, UpdateView):
+    permissao = 'contratos_editar'
     model = Contrato
     form_class = ContratoForm
     template_name = 'form.html'
@@ -93,7 +95,8 @@ class ContratoEditar(SindicoRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class DocumentoEnviar(SindicoRequiredMixin, View):
+class DocumentoEnviar(PermissaoRequiredMixin, View):
+    permissao = 'contratos_editar'
     def post(self, request, pk):
         contrato = get_object_or_404(Contrato, pk=pk)
         form = DocumentoForm(request.POST, request.FILES)
@@ -125,7 +128,8 @@ class DocumentoBaixar(LoginRequiredMixin, View):
         return FileResponse(arquivo, as_attachment=True, filename=documento.nome_original or documento.arquivo.name)
 
 
-class DocumentoExcluir(SindicoRequiredMixin, View):
+class DocumentoExcluir(PermissaoRequiredMixin, View):
+    permissao = 'contratos_editar'
     def post(self, request, pk):
         documento = get_object_or_404(DocumentoContrato, pk=pk)
         contrato_pk = documento.contrato_id

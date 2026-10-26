@@ -3,7 +3,7 @@ from datetime import date, datetime
 from django.shortcuts import render
 from django.views import View
 
-from core.permissions import SindicoRequiredMixin
+from core.permissions import PermissaoRequiredMixin
 from financeiro.models import Competencia
 
 from . import dados
@@ -48,7 +48,8 @@ def competencia_escolhida(request):
     return (escolhida or (todas[0] if todas else None)), todas
 
 
-class Relatorio(SindicoRequiredMixin, View):
+class Relatorio(PermissaoRequiredMixin, View):
+    permissao = 'relatorios_ver'
     """Cada relatório monta o contexto e, se pedido com ?formato=csv, as linhas do CSV."""
     template_name = None
 
@@ -66,7 +67,8 @@ class Relatorio(SindicoRequiredMixin, View):
         return render(request, self.template_name, contexto)
 
 
-class Indice(SindicoRequiredMixin, View):
+class Indice(PermissaoRequiredMixin, View):
+    permissao = 'relatorios_ver'
     def get(self, request):
         return render(request, 'relatorios/indice.html', {'relatorios': RELATORIOS})
 

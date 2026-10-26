@@ -39,7 +39,7 @@
 </style>
 
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3 no-print">
-  {% if user.e_equipe %}
+  {% if pode.mural_editar %}
     <a class="btn btn-marca" href="{% url 'contato_criar' %}{% if categoria_escolhida %}?categoria={{ categoria_escolhida }}{% endif %}">{% include 'partials/icone.html' with nome='mais' %}Novo contato</a>
   {% endif %}
   <form method="get" class="ms-auto d-flex gap-2">
@@ -62,7 +62,7 @@
   <div class="mural">
     {% for c in contatos %}
       <article class="postit cor{{ c.cor }}">
-        {% if user.e_equipe %}
+        {% if pode.mural_editar %}
           <div class="cantos no-print">
             <a class="pi-btn edit" href="{% url 'contato_editar' c.pk %}" title="Editar" aria-label="Editar {{ c.nome }}">{% include 'partials/icone.html' with nome='lapis' %}</a>
             <form method="post" action="{% url 'contato_excluir' c.pk %}" onsubmit="return confirm('Tirar {{ c.nome|escapejs }} do mural?');">{% csrf_token %}
@@ -85,7 +85,7 @@
     {% else %}
       <p style="font-size:2rem; margin:0">📌</p>
       <p class="mb-2">O mural ainda está vazio.</p>
-      {% if user.e_equipe %}<p class="mb-0">Cole aqui o telefone do eletricista, do encanador, do técnico do ar-condicionado e dos demais prestadores.</p>{% endif %}
+      {% if pode.mural_editar %}<p class="mb-0">Cole aqui o telefone do eletricista, do encanador, do técnico do ar-condicionado e dos demais prestadores.</p>{% endif %}
     {% endif %}
   </div>
 {% endif %}

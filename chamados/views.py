@@ -1,7 +1,6 @@
 import os
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,7 +10,7 @@ from django.views import View
 from django.views.generic import CreateView, ListView
 
 from cadastros.models import Unidade
-from core.permissions import EquipeRequiredMixin
+from core.permissions import PermissaoRequiredMixin
 
 from .forms import AnexoForm, ChamadoForm, ComentarioForm, GerenciarForm
 from .models import Anexo, Chamado, Comentario, registrar
@@ -19,7 +18,7 @@ from .models import Anexo, Chamado, Comentario, registrar
 
 def chamados_visiveis(usuario):
     """Equipe e síndico veem todos. Os demais veem os chamados da própria unidade."""
-    if usuario.e_equipe:
+    if usuario.pode('chamados_gerenciar'):
         return Chamado.objects.all()
     if usuario.unidade_id:
         return Chamado.objects.filter(unidade_id=usuario.unidade_id)
@@ -27,10 +26,11 @@ def chamados_visiveis(usuario):
 
 
 def pode_cancelar(usuario, chamado):
-    return chamado.status == Chamado.Status.ABERTO and (usuario.e_equipe or chamado.solicitante_id == usuario.pk)
+    return chamado.status == Chamado.Status.ABERTO and (usuario.pode('chamados_gerenciar') or chamado.solicitante_id == usuario.pk)
 
 
-class ChamadoLista(LoginRequiredMixin, ListView):
+class ChamadoLista(PermissaoRequiredMixin, ListView):
+    permissao = 'chamados_ver'
     template_name = 'chamados/chamado_lista.html'
     context_object_name = 'chamados'
     paginate_by = 30
@@ -49,7 +49,7 @@ class ChamadoLista(LoginRequiredMixin, ListView):
         if categoria in Chamado.Categoria.values:
             consulta = consulta.filter(categoria=categoria)
         unidade = self.request.GET.get('unidade', '')
-        if self.request.user.e_equipe and unidade.isdigit():
+        if self.request.user.pode('chamados_gerenciar') and unidade.isdigit():
             consulta = consulta.filter(unidade_id=int(unidade))
         return consulta.order_by('-prioridade', '-aberto_em') if situacao == 'abertos' else consulta
 
@@ -66,13 +66,14 @@ class ChamadoLista(LoginRequiredMixin, ListView):
             situacoes=[('abertos', 'Em aberto'), ('todos', 'Todos')] + list(Chamado.Status.choices),
             prioridades=Chamado.Prioridade.choices,
             categorias=Chamado.Categoria.choices,
-            unidades=Unidade.objects.all() if usuario.e_equipe else [],
-            pode_abrir=usuario.e_equipe or bool(usuario.unidade_id),
+            unidades=Unidade.objects.all() if usuario.pode('chamados_gerenciar') else [],
+            pode_abrir=usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and bool(usuario.unidade_id)),
         )
         return contexto
 
 
-class ChamadoCriar(LoginRequiredMixin, CreateView):
+class ChamadoCriar(PermissaoRequiredMixin, CreateView):
+    permissao = 'chamados_ver'
     model = Chamado
     form_class = ChamadoForm
     template_name = 'form.html'
@@ -80,7 +81,7 @@ class ChamadoCriar(LoginRequiredMixin, CreateView):
 
     def dispatch(self, request, *args, **kwargs):
         usuario = request.user
-        if usuario.is_authenticated and not (usuario.e_equipe or usuario.unidade_id):
+        if usuario.is_authenticated and not (usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and usuario.unidade_id)):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
@@ -93,7 +94,7 @@ class ChamadoCriar(LoginRequiredMixin, CreateView):
         usuario = self.request.user
         chamado = form.save(commit=False)
         chamado.solicitante = usuario
-        if not usuario.e_equipe:
+        if not usuario.pode('chamados_gerenciar'):
             chamado.unidade = usuario.unidade
         chamado.save()
         for arquivo in form.cleaned_data['fotos']:
@@ -105,7 +106,8 @@ class ChamadoCriar(LoginRequiredMixin, CreateView):
         return redirect('chamado_detalhe', pk=chamado.pk)
 
 
-class ChamadoDetalhe(LoginRequiredMixin, View):
+class ChamadoDetalhe(PermissaoRequiredMixin, View):
+    permissao = 'chamados_ver'
     def get(self, request, pk):
         chamado = get_object_or_404(chamados_visiveis(request.user), pk=pk)
         return self.renderizar(request, chamado)
@@ -114,23 +116,24 @@ class ChamadoDetalhe(LoginRequiredMixin, View):
     def renderizar(request, chamado, **formularios):
         usuario = request.user
         historico = chamado.comentarios.select_related('autor')
-        if not usuario.e_equipe:
+        if not usuario.pode('chamados_gerenciar'):
             historico = historico.filter(interno=False)
         contexto = dict(
             chamado=chamado,
             historico=historico,
             anexos=chamado.anexos.all(),
-            equipe=usuario.e_equipe,
+            equipe=usuario.pode('chamados_gerenciar'),
             pode_cancelar=pode_cancelar(usuario, chamado),
             form_comentario=formularios.get('form_comentario') or ComentarioForm(usuario=usuario),
             form_anexo=AnexoForm(),
         )
-        if usuario.e_equipe:
+        if usuario.pode('chamados_gerenciar'):
             contexto['form_gerenciar'] = formularios.get('form_gerenciar') or GerenciarForm(instance=chamado)
         return render(request, 'chamados/chamado_detalhe.html', contexto)
 
 
-class Gerenciar(EquipeRequiredMixin, View):
+class Gerenciar(PermissaoRequiredMixin, View):
+    permissao = 'chamados_gerenciar'
     """Equipe e síndico: situação, prioridade, responsável, fornecedor e custo."""
 
     def post(self, request, pk):
@@ -159,7 +162,8 @@ class Gerenciar(EquipeRequiredMixin, View):
         return redirect('chamado_detalhe', pk=chamado.pk)
 
 
-class Comentar(LoginRequiredMixin, View):
+class Comentar(PermissaoRequiredMixin, View):
+    permissao = 'chamados_ver'
     def post(self, request, pk):
         chamado = get_object_or_404(chamados_visiveis(request.user), pk=pk)
         if chamado.status == Chamado.Status.CANCELADO:
@@ -171,13 +175,14 @@ class Comentar(LoginRequiredMixin, View):
         comentario = form.save(commit=False)
         comentario.chamado = chamado
         comentario.autor = request.user
-        comentario.interno = bool(request.user.e_equipe and form.cleaned_data.get('interno'))
+        comentario.interno = bool(request.user.pode('chamados_gerenciar') and form.cleaned_data.get('interno'))
         comentario.save()
         chamado.save(update_fields=['atualizado_em'])
         return redirect('chamado_detalhe', pk=chamado.pk)
 
 
-class AnexoEnviar(LoginRequiredMixin, View):
+class AnexoEnviar(PermissaoRequiredMixin, View):
+    permissao = 'chamados_ver'
     def post(self, request, pk):
         chamado = get_object_or_404(chamados_visiveis(request.user), pk=pk)
         if chamado.status == Chamado.Status.CANCELADO:
@@ -198,7 +203,8 @@ class AnexoEnviar(LoginRequiredMixin, View):
         return redirect('chamado_detalhe', pk=chamado.pk)
 
 
-class AnexoBaixar(LoginRequiredMixin, View):
+class AnexoBaixar(PermissaoRequiredMixin, View):
+    permissao = 'chamados_ver'
     """Entrega o arquivo só a quem vê o chamado. Fotos abrem na tela; PDFs são baixados."""
 
     def get(self, request, pk):
@@ -212,7 +218,8 @@ class AnexoBaixar(LoginRequiredMixin, View):
         return FileResponse(arquivo, as_attachment=not anexo.eh_imagem, filename=anexo.nome_original or anexo.arquivo.name)
 
 
-class AnexoExcluir(EquipeRequiredMixin, View):
+class AnexoExcluir(PermissaoRequiredMixin, View):
+    permissao = 'chamados_gerenciar'
     def post(self, request, pk):
         anexo = get_object_or_404(Anexo, pk=pk)
         chamado_pk = anexo.chamado_id
@@ -221,7 +228,8 @@ class AnexoExcluir(EquipeRequiredMixin, View):
         return redirect('chamado_detalhe', pk=chamado_pk)
 
 
-class Cancelar(LoginRequiredMixin, View):
+class Cancelar(PermissaoRequiredMixin, View):
+    permissao = 'chamados_ver'
     def post(self, request, pk):
         chamado = get_object_or_404(chamados_visiveis(request.user), pk=pk)
         if not pode_cancelar(request.user, chamado):

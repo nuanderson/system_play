@@ -2,13 +2,14 @@ from django.contrib import messages
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView
 
-from core.permissions import SindicoRequiredMixin
+from core.permissions import PermissaoRequiredMixin
 
 from .forms import LocatarioForm, UnidadeForm
 from .models import Locatario, Unidade
 
 
-class UnidadeLista(SindicoRequiredMixin, ListView):
+class UnidadeLista(PermissaoRequiredMixin, ListView):
+    permissao = 'cadastros_ver'
     model = Unidade
     template_name = 'cadastros/unidade_lista.html'
     context_object_name = 'unidades'
@@ -17,7 +18,8 @@ class UnidadeLista(SindicoRequiredMixin, ListView):
         return Unidade.objects.select_related('locatario')
 
 
-class UnidadeCriar(SindicoRequiredMixin, CreateView):
+class UnidadeCriar(PermissaoRequiredMixin, CreateView):
+    permissao = 'unidades_editar'
     model = Unidade
     form_class = UnidadeForm
     template_name = 'form.html'
@@ -29,7 +31,8 @@ class UnidadeCriar(SindicoRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class UnidadeEditar(SindicoRequiredMixin, UpdateView):
+class UnidadeEditar(PermissaoRequiredMixin, UpdateView):
+    permissao = 'unidades_editar'
     model = Unidade
     form_class = UnidadeForm
     template_name = 'form.html'
@@ -41,13 +44,15 @@ class UnidadeEditar(SindicoRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
-class LocatarioLista(SindicoRequiredMixin, ListView):
+class LocatarioLista(PermissaoRequiredMixin, ListView):
+    permissao = 'cadastros_ver'
     model = Locatario
     template_name = 'cadastros/locatario_lista.html'
     context_object_name = 'locatarios'
 
 
-class LocatarioCriar(SindicoRequiredMixin, CreateView):
+class LocatarioCriar(PermissaoRequiredMixin, CreateView):
+    permissao = 'locatarios_editar'
     model = Locatario
     form_class = LocatarioForm
     template_name = 'form.html'
@@ -59,7 +64,8 @@ class LocatarioCriar(SindicoRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class LocatarioEditar(SindicoRequiredMixin, UpdateView):
+class LocatarioEditar(PermissaoRequiredMixin, UpdateView):
+    permissao = 'locatarios_editar'
     model = Locatario
     form_class = LocatarioForm
     template_name = 'form.html'

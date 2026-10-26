@@ -2,7 +2,7 @@
 {% block titulo %}Cobranças · Edifício Uruz{% endblock %}
 {% block h1 %}Cobranças{% endblock %}
 {% block conteudo %}
-{% if user.e_sindico %}
+{% if pode.financeiro_preparar %}
   <div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-marca" href="{% url 'aluguel_gerar' %}">{% include 'partials/icone.html' with nome='mais' %}Gerar aluguéis do mês</a>
     <a class="btn btn-acao" href="{% url 'competencia_lista' %}">Condomínio e rateio</a>
@@ -34,7 +34,7 @@
 <div class="cartao">
   <div class="table-responsive">
     <table class="table table-uruz table-hover align-middle mb-0">
-      <thead><tr><th>Unidade</th><th>Locatário</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Valor</th><th>Situação</th>{% if user.e_sindico %}<th></th>{% endif %}</tr></thead>
+      <thead><tr><th>Unidade</th><th>Locatário</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Valor</th><th>Situação</th>{% if pode.financeiro_preparar %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for c in cobrancas %}
           <tr>
@@ -50,7 +50,7 @@
               {% elif c.atrasada %}<span class="selo vencido">Atrasada {{ c.dias_atraso }} d</span>
               {% else %}<span class="selo negociacao">Em aberto</span>{% endif %}
             </td>
-            {% if user.e_sindico %}
+            {% if pode.financeiro_preparar %}
               <td class="text-end">
                 {% if c.status == 'aberta' %}
                   <div class="acoes">

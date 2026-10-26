@@ -12,7 +12,7 @@ from django.views import View
 from django.views.generic import ListView, UpdateView
 
 from cadastros.models import Unidade
-from core.permissions import SindicoRequiredMixin
+from core.permissions import PermissaoRequiredMixin
 
 from . import servicos
 from .calculo import ErroRateio, calcular_rateio
@@ -24,13 +24,15 @@ from .models import Cobranca, Competencia, Despesa, Rateio
 DespesaFormSet = modelformset_factory(Despesa, form=DespesaMarcacaoForm, extra=0)
 
 
-class CompetenciaLista(SindicoRequiredMixin, ListView):
+class CompetenciaLista(PermissaoRequiredMixin, ListView):
+    permissao = 'financeiro_preparar'
     model = Competencia
     template_name = 'financeiro/competencia_lista.html'
     context_object_name = 'competencias'
 
 
-class CompetenciaNova(SindicoRequiredMixin, View):
+class CompetenciaNova(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
     def get(self, request):
         return render(request, 'financeiro/competencia_nova.html', {'form': CompetenciaNovaForm()})
 
@@ -59,7 +61,8 @@ class CompetenciaNova(SindicoRequiredMixin, View):
         return render(request, 'financeiro/competencia_nova.html', {'form': form})
 
 
-class CompetenciaDetalhe(SindicoRequiredMixin, View):
+class CompetenciaDetalhe(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
     def get(self, request, pk):
         competencia = get_object_or_404(Competencia, pk=pk)
         return self.renderizar(request, competencia)
@@ -84,7 +87,8 @@ class CompetenciaDetalhe(SindicoRequiredMixin, View):
         })
 
 
-class DespesasSalvar(SindicoRequiredMixin, View):
+class DespesasSalvar(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
     def post(self, request, pk):
         competencia = get_object_or_404(Competencia, pk=pk)
         if not competencia.editavel:
@@ -102,7 +106,8 @@ class DespesasSalvar(SindicoRequiredMixin, View):
         return CompetenciaDetalhe.renderizar(request, competencia, formset)
 
 
-class RateioCalcular(SindicoRequiredMixin, View):
+class RateioCalcular(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
     def post(self, request, pk):
         competencia = get_object_or_404(Competencia, pk=pk)
         try:
@@ -113,7 +118,8 @@ class RateioCalcular(SindicoRequiredMixin, View):
         return redirect('competencia_detalhe', pk=competencia.pk)
 
 
-class RateioAprovar(SindicoRequiredMixin, View):
+class RateioAprovar(PermissaoRequiredMixin, View):
+    permissao = 'rateio_aprovar'
     def post(self, request, pk):
         competencia = get_object_or_404(Competencia, pk=pk)
         try:
@@ -136,7 +142,7 @@ class CobrancaAcessoMixin(LoginRequiredMixin):
 
     def dispatch(self, request, *args, **kwargs):
         usuario = request.user
-        if usuario.is_authenticated and not (usuario.e_sindico or usuario.perfil == usuario.Perfil.LOCATARIO):
+        if usuario.is_authenticated and not usuario.pode('cobrancas_ver_todas', 'cobrancas_ver_proprias'):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
@@ -148,7 +154,7 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
     def get_queryset(self):
         usuario = self.request.user
         consulta = Cobranca.objects.select_related('unidade', 'locatario')
-        if not usuario.e_sindico:
+        if not usuario.pode('cobrancas_ver_todas'):
             consulta = consulta.filter(unidade_id=usuario.unidade_id).exclude(status=Cobranca.Status.CANCELADA)
         situacao = self.request.GET.get('situacao', '')
         hoje = timezone.localdate()
@@ -165,7 +171,7 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
         if len(mes) == 7 and mes[4] == '-' and mes[:4].isdigit() and mes[5:].isdigit():
             consulta = consulta.filter(referencia__year=int(mes[:4]), referencia__month=int(mes[5:]))
         unidade = self.request.GET.get('unidade', '')
-        if usuario.e_sindico and unidade.isdigit():
+        if usuario.pode('cobrancas_ver_todas') and unidade.isdigit():
             consulta = consulta.filter(unidade_id=int(unidade))
         return consulta
 
@@ -183,12 +189,13 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
             ),
             situacoes=[('aberta', 'Em aberto'), ('atrasada', 'Atrasadas'), ('paga', 'Pagas'), ('cancelada', 'Canceladas')],
             tipos=Cobranca.Tipo.choices,
-            unidades=Unidade.objects.all() if self.request.user.e_sindico else [],
+            unidades=Unidade.objects.all() if self.request.user.pode('cobrancas_ver_todas') else [],
         )
         return contexto
 
 
-class AluguelGerar(SindicoRequiredMixin, View):
+class AluguelGerar(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
     def get(self, request):
         form = AluguelGerarForm(initial={'mes': timezone.localdate().strftime('%Y-%m')})
         return render(request, 'financeiro/aluguel_gerar.html', {'form': form})
@@ -203,7 +210,8 @@ class AluguelGerar(SindicoRequiredMixin, View):
         return render(request, 'financeiro/aluguel_gerar.html', {'form': form})
 
 
-class CobrancaPagar(SindicoRequiredMixin, View):
+class CobrancaPagar(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
     def get(self, request, pk):
         cobranca = get_object_or_404(Cobranca, pk=pk, status=Cobranca.Status.ABERTA)
         return render(request, 'form.html', {
@@ -222,7 +230,8 @@ class CobrancaPagar(SindicoRequiredMixin, View):
         return render(request, 'form.html', {'titulo': f'Registrar pagamento — {cobranca}', 'form': form})
 
 
-class CobrancaCancelar(SindicoRequiredMixin, View):
+class CobrancaCancelar(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
     def post(self, request, pk):
         cobranca = get_object_or_404(Cobranca, pk=pk, status=Cobranca.Status.ABERTA)
         cobranca.status = Cobranca.Status.CANCELADA
@@ -231,7 +240,8 @@ class CobrancaCancelar(SindicoRequiredMixin, View):
         return redirect('cobranca_lista')
 
 
-class CobrancaEditar(SindicoRequiredMixin, UpdateView):
+class CobrancaEditar(PermissaoRequiredMixin, UpdateView):
+    permissao = 'financeiro_preparar'
     model = Cobranca
     form_class = CobrancaEditarForm
     template_name = 'form.html'

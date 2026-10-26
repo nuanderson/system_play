@@ -27,7 +27,7 @@
 <div class="cartao">
   <div class="table-responsive">
     <table class="table table-uruz table-hover align-middle mb-0">
-      <thead><tr><th>Nº</th><th>Chamado</th><th>Onde</th><th>Prioridade</th><th>Situação</th><th>Aberto em</th>{% if user.e_equipe %}<th>Responsável</th>{% endif %}<th></th></tr></thead>
+      <thead><tr><th>Nº</th><th>Chamado</th><th>Onde</th><th>Prioridade</th><th>Situação</th><th>Aberto em</th>{% if pode.chamados_gerenciar %}<th>Responsável</th>{% endif %}<th></th></tr></thead>
       <tbody>
         {% for c in chamados %}
           <tr>
@@ -37,7 +37,7 @@
             <td><span class="selo pr-{{ c.prioridade }}">{{ c.get_prioridade_display }}</span></td>
             <td><span class="selo st-{{ c.status }}">{{ c.get_status_display }}</span></td>
             <td>{{ c.aberto_em|date:"d/m/Y" }}{% if c.em_aberto %}<div class="suave" style="font-size:.85rem">há {{ c.dias_em_aberto }} d</div>{% endif %}</td>
-            {% if user.e_equipe %}<td>{{ c.responsavel|default:"—" }}</td>{% endif %}
+            {% if pode.chamados_gerenciar %}<td>{{ c.responsavel|default:"—" }}</td>{% endif %}
             <td class="text-end"><a class="btn btn-sm btn-acao" href="{% url 'chamado_detalhe' c.pk %}">{% include 'partials/icone.html' with nome='olho' %}Abrir</a></td>
           </tr>
         {% empty %}
