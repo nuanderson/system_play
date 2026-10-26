@@ -54,8 +54,8 @@ Seis perfis. A tabela completa de permissões está num único arquivo, `core/ac
 | Perfil | Pode |
 |---|---|
 | **Síndico** | Tudo, inclusive aprovar o rateio e gerenciar usuários |
-| **Administrativo** | Contratos, locatários, condomínio e rateio (prepara, mas não aprova), cobranças, correspondências, relatórios, mural |
-| **Equipe e portaria** | Chamados (todos) e mural |
+| **Administrativo** | Contratos, locatários, condomínio e rateio (importa, calcula e aprova), cobranças, correspondências, relatórios, mural |
+| **Equipe e portaria** | Chamados (todos), correspondências (registra, dá baixa, devolve) e mural |
 | **Consulta** | Só leitura: relatórios, contratos e cobranças |
 | **Responsável da unidade** | Contratos e cobranças da própria unidade, chamados e correspondências da unidade, mural, e cadastra/desativa as pessoas da própria unidade |
 | **Membro da unidade** | Chamados e correspondências da unidade, mural |

@@ -35,8 +35,8 @@ MATRIZ = {
     'relatorio_inadimplencia': {S, A, C},
     'chamado_lista': {S, E, L, M},
     'chamado_criar': {S, E, L, M},
-    'correspondencia_lista': {S, A, L, M},
-    'correspondencia_criar': {S, A},
+    'correspondencia_lista': {S, A, E, L, M},
+    'correspondencia_criar': {S, A, E},
     'mural': acesso.TODOS,
     'contato_criar': {S, A, E},
     'usuarios': {S},
@@ -82,9 +82,10 @@ class TabelaDePermissoesTests(SimpleTestCase):
 
     def test_regras_de_negocio_combinadas_com_o_sindico(self):
         P = acesso.PERMISSOES
-        self.assertEqual(P['rateio_aprovar'], {S})                      # só o síndico libera cobranças
-        self.assertNotIn(E, P['correspondencias_gerenciar'])            # portaria não mexe em correspondência
+        self.assertEqual(P['rateio_aprovar'], {S, A})                   # o administrativo também libera as cobranças
+        self.assertIn(E, P['correspondencias_gerenciar'])               # a portaria cuida das correspondências
         self.assertEqual(P['chamados_gerenciar'], {S, E})
+        self.assertNotIn(E, P['financeiro_preparar'])                   # mas a portaria não vê dinheiro
         self.assertNotIn(C, P['financeiro_preparar'])                   # consulta nunca escreve
         for nome, perfis in P.items():
             if nome.endswith(('_editar', '_gerenciar', '_preparar', '_aprovar')):
@@ -174,29 +175,32 @@ class AdministrativoTests(Base):
         Despesa.objects.create(competencia=self.comp, descricao='x', valor=Decimal('1000'), tipo='demais',
                                vencimento=date(2026, 9, 5), chave='k1')
 
-    def test_administrativo_prepara_mas_so_o_sindico_aprova(self):
+    def test_administrativo_importa_calcula_e_aprova_sem_o_sindico(self):
         self.client.force_login(self.u[A])
         self.client.post(reverse('rateio_calcular', args=[self.comp.pk]))
         self.comp.refresh_from_db()
         self.assertEqual(self.comp.status, Competencia.Status.CALCULADA)
-        self.assertEqual(self.client.post(reverse('rateio_aprovar', args=[self.comp.pk])).status_code, 403)
-        self.comp.refresh_from_db()
-        self.assertEqual(self.comp.status, Competencia.Status.CALCULADA)
-        self.assertFalse(Cobranca.objects.exists())
-        self.client.force_login(self.u[S])
         self.client.post(reverse('rateio_aprovar', args=[self.comp.pk]))
         self.comp.refresh_from_db()
         self.assertEqual(self.comp.status, Competencia.Status.APROVADA)
+        self.assertEqual(self.comp.rateio.aprovado_por, self.u[A])  # fica registrado quem aprovou
         self.assertEqual(Cobranca.objects.count(), 2)
 
-    def test_botao_de_aprovar_so_aparece_para_o_sindico(self):
+    def test_quem_nao_prepara_o_financeiro_nao_aprova(self):
+        calcular_rateio(self.comp)
+        for perfil in (E, C, L, M):
+            self.client.force_login(self.u[perfil])
+            self.assertEqual(self.client.post(reverse('rateio_aprovar', args=[self.comp.pk])).status_code, 403, perfil)
+        self.comp.refresh_from_db()
+        self.assertEqual(self.comp.status, Competencia.Status.CALCULADA)
+        self.assertFalse(Cobranca.objects.exists())
+
+    def test_botao_de_aprovar_aparece_para_o_sindico_e_o_administrativo(self):
         calcular_rateio(self.comp)
         url = reverse('competencia_detalhe', args=[self.comp.pk])
-        self.client.force_login(self.u[A])
-        self.assertNotContains(self.client.get(url), 'Aprovar e gerar cobranças')
-        self.assertContains(self.client.get(url), 'síndico')
-        self.client.force_login(self.u[S])
-        self.assertContains(self.client.get(url), 'Aprovar e gerar cobranças')
+        for perfil in (S, A):
+            self.client.force_login(self.u[perfil])
+            self.assertContains(self.client.get(url), 'Aprovar e gerar cobranças', msg_prefix=perfil)
 
     def test_administrativo_nao_mexe_em_areas_nem_em_usuarios(self):
         self.client.force_login(self.u[A])
@@ -212,19 +216,31 @@ class AdministrativoTests(Base):
 
 
 class EquipeEPortariaTests(Base):
-    def test_equipe_gerencia_chamado_e_mural_mas_nao_correspondencia(self):
+    def test_equipe_cuida_de_chamados_mural_e_correspondencias(self):
         self.client.force_login(self.u[E])
-        self.assertEqual(self.client.get(reverse('chamado_lista')).status_code, 200)
-        self.assertEqual(self.client.get(reverse('contato_criar')).status_code, 200)
-        self.assertEqual(self.client.get(reverse('correspondencia_lista')).status_code, 403)
-        self.assertEqual(self.client.get(reverse('correspondencia_criar')).status_code, 403)
+        for rota in ('chamado_lista', 'contato_criar', 'correspondencia_lista', 'correspondencia_criar'):
+            self.assertEqual(self.client.get(reverse(rota)).status_code, 200, rota)
 
-    def test_equipe_nao_ve_o_cartao_de_correspondencias_na_home(self):
+    def test_portaria_registra_e_da_baixa_em_correspondencia(self):
+        from django.utils import timezone
+        from correspondencias.models import Correspondencia
         self.client.force_login(self.u[E])
+        agora = timezone.localtime().strftime('%Y-%m-%dT%H:%M')
+        self.client.post(reverse('correspondencia_criar'), dict(
+            unidade=self.sala1.pk, tipo='encomenda', destinatario='Maria', recebido_em=agora, observacoes=''))
+        item = Correspondencia.objects.get()
+        self.assertEqual(item.registrado_por, self.u[E])
+        self.client.post(reverse('correspondencia_baixa', args=[item.pk]), dict(
+            retirada_por='João', retirada_em=agora, baixa_obs=''))
+        item.refresh_from_db()
+        self.assertEqual((item.status, item.baixa_por), ('retirada', self.u[E]))
+
+    def test_portaria_continua_sem_acesso_a_dinheiro_e_contratos(self):
+        self.client.force_login(self.u[E])
+        for rota in ('cobranca_lista', 'competencia_lista', 'contrato_lista', 'relatorios', 'unidade_lista', 'usuarios'):
+            self.assertEqual(self.client.get(reverse(rota)).status_code, 403, rota)
         resposta = self.client.get(reverse('inicio'))
-        self.assertContains(resposta, 'Chamados de manutenção')
-        self.assertContains(resposta, 'Mural de contatos')
-        self.assertNotContains(resposta, 'Correspondências</h3>')
+        self.assertContains(resposta, 'Correspondências</h3>')
         self.assertNotContains(resposta, 'Cobranças</h3>')
 
 
@@ -235,7 +251,7 @@ class HomePorPerfilTests(Base):
                 'Chamados de manutenção', 'Correspondências', 'Mural de contatos', 'Relatórios'},
             A: {'Unidades', 'Locatários', 'Contratos', 'Condomínio e rateio', 'Cobranças', 'Correspondências',
                 'Mural de contatos', 'Relatórios'},
-            E: {'Chamados de manutenção', 'Mural de contatos'},
+            E: {'Chamados de manutenção', 'Correspondências', 'Mural de contatos'},
             C: {'Contratos', 'Cobranças', 'Mural de contatos', 'Relatórios'},
             L: {'Pessoas da unidade', 'Contratos', 'Cobranças', 'Chamados de manutenção', 'Correspondências', 'Mural de contatos'},
             M: {'Chamados de manutenção', 'Correspondências', 'Mural de contatos'},

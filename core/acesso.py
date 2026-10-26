@@ -32,7 +32,7 @@ PERMISSOES = {
     'cobrancas_ver_todas': {SINDICO, ADMINISTRATIVO, CONSULTA},
     'cobrancas_ver_proprias': {LOCATARIO},
     'financeiro_preparar': {SINDICO, ADMINISTRATIVO},  # importa, calcula, gera aluguel, dá baixa
-    'rateio_aprovar': {SINDICO},                       # só o síndico libera as cobranças do mês
+    'rateio_aprovar': {SINDICO, ADMINISTRATIVO},       # libera as cobranças do mês
 
     # Relatórios
     'relatorios_ver': {SINDICO, ADMINISTRATIVO, CONSULTA},
@@ -41,7 +41,7 @@ PERMISSOES = {
     'chamados_ver': {SINDICO, EQUIPE, LOCATARIO, MEMBRO},
     'chamados_gerenciar': {SINDICO, EQUIPE},       # vê todos, muda situação, escreve notas internas
     'correspondencias_ver_proprias': {LOCATARIO, MEMBRO},
-    'correspondencias_gerenciar': {SINDICO, ADMINISTRATIVO},
+    'correspondencias_gerenciar': {SINDICO, ADMINISTRATIVO, EQUIPE},  # registra, dá baixa e devolve
     'mural_ver': TODOS,
     'mural_editar': {SINDICO, ADMINISTRATIVO, EQUIPE},
 }
