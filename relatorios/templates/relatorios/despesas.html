@@ -1,0 +1,77 @@
+{% extends 'relatorios/base_relatorio.html' %}
+{% block filtros %}
+  <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Mês</label>
+    <select name="competencia" onchange="this.form.submit()">
+      {% for c in competencias %}<option value="{{ c.pk }}"{% if c.pk == escolhida.pk %} selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select></div>
+{% endblock %}
+{% block corpo %}
+{% if relatorio_dados %}
+  {% with d=relatorio_dados %}
+  <div class="resumo">
+    <div class="cartao"><div class="suave">Total no rateio</div><div class="valor">R$ {{ d.total|floatformat:"2g" }}</div></div>
+    <div class="cartao"><div class="suave">Energia</div><div class="valor">R$ {{ d.por_tipo.energia|floatformat:"2g" }}</div></div>
+    <div class="cartao"><div class="suave">Água</div><div class="valor">R$ {{ d.por_tipo.agua|floatformat:"2g" }}</div></div>
+    <div class="cartao"><div class="suave">Demais</div><div class="valor">R$ {{ d.por_tipo.demais|floatformat:"2g" }}</div></div>
+  </div>
+  {% if d.total_excluidas or d.multas %}
+    <p class="ajuda">Fora do rateio: R$ {{ d.total_excluidas|floatformat:"2g" }}. Multas e juros pagos por atraso (informativo): R$ {{ d.multas|floatformat:"2g" }}.</p>
+  {% endif %}
+
+  <div class="cartao mb-3">
+    <div class="titulo-cartao">Por categoria — {{ d.competencia }}</div>
+    <div class="table-responsive">
+      <table class="table table-uruz mb-0 align-middle">
+        <thead><tr><th>Categoria</th><th class="text-end">Valor</th><th class="text-end">%</th><th style="width:35%"></th></tr></thead>
+        <tbody>
+          {% for nome, valor, pct in d.categorias %}
+            <tr><td>{{ nome }}</td><td class="text-end">R$ {{ valor|floatformat:"2g" }}</td><td class="text-end">{{ pct|floatformat:1 }}%</td>
+              <td><div class="barra-uruz" style="width:{{ pct|floatformat:0 }}%"></div></td></tr>
+          {% empty %}<tr><td colspan="4" class="suave">Nenhuma despesa no rateio.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endwith %}
+{% else %}
+  <div class="cartao"><p class="mb-0 suave">Nenhum mês importado ainda. Importe o relatório de contas a pagar em Condomínio e rateio.</p></div>
+{% endif %}
+
+<div class="cartao">
+  <div class="titulo-cartao">Evolução dos últimos 12 meses</div>
+  <div class="table-responsive">
+    <table class="table table-uruz mb-0 align-middle">
+      <thead><tr><th>Mês</th><th class="text-end">Energia</th><th class="text-end">Água</th><th class="text-end">Demais</th><th class="text-end">Total</th><th style="width:25%"></th></tr></thead>
+      <tbody>
+        {% for l in evolucao %}
+          <tr><td>{{ l.competencia }}</td><td class="text-end">{{ l.energia|floatformat:"2g" }}</td><td class="text-end">{{ l.agua|floatformat:"2g" }}</td>
+            <td class="text-end">{{ l.demais|floatformat:"2g" }}</td><td class="text-end"><strong>{{ l.total|floatformat:"2g" }}</strong></td>
+            <td><div class="barra-uruz" style="width:{{ l.barra }}%"></div></td></tr>
+        {% empty %}<tr><td colspan="6" class="suave">Sem dados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if relatorio_dados %}
+<div class="cartao mt-3">
+  <div class="titulo-cartao">Lançamentos</div>
+  <div class="table-responsive">
+    <table class="table table-uruz mb-0 align-middle">
+      <thead><tr><th>Venc.</th><th>Fornecedor / descrição</th><th>Categoria</th><th>Tipo</th><th class="text-end">Valor</th><th>No rateio</th></tr></thead>
+      <tbody>
+        {% for x in relatorio_dados.linhas %}
+          <tr><td>{{ x.vencimento|date:"d/m" }}</td>
+            <td style="white-space:normal;min-width:220px">{{ x.fornecedor }}<div class="suave" style="font-size:.85rem">{{ x.descricao }}</div></td>
+            <td>{{ x.categoria|default:"—" }}</td><td>{{ x.get_tipo_display }}</td>
+            <td class="text-end">{{ x.valor|floatformat:"2g" }}</td>
+            <td>{% if x.entra_no_rateio %}Sim{% else %}<span class="suave">Não · {{ x.motivo_exclusao }}</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

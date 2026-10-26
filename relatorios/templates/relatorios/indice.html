@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block titulo %}Relatórios · Edifício Uruz{% endblock %}
+{% block h1 %}Relatórios{% endblock %}
+{% block conteudo %}
+<p class="suave">Todos podem ser impressos e exportados em CSV, para abrir no Excel.</p>
+<div class="modulos">
+  {% for r in relatorios %}
+    <a class="modulo" href="{% url r.nome %}">
+      <div class="icone {{ r.cor }}">{{ r.icone }}</div>
+      <h3>{{ r.titulo }}</h3>
+      <p>{{ r.texto }}</p>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

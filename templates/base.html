@@ -1,0 +1,154 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Edifício Uruz{% endblock %}</title>
+  <style>
+    /* Paleta da logo Play: ciano #00BEF5, azul #0074C8, azul-marinho #05385C */
+    :root { --fundo:#f3f8fc; --cartao:#fff; --texto:#0b2a42; --suave:#5b7083; --borda:#d8e5ef; --marca:#0074c8; --ciano:#00bef5; --marinho:#05385c; --degrade:linear-gradient(135deg,#00bef5,#0074c8); --alerta:#b42318; --ok:#067647; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fundo:#0b1824; --cartao:#102334; --texto:#e6f1fa; --suave:#8fa6ba; --borda:#1e3a52; --marca:#38b6f0; --ciano:#00bef5; --marinho:#8cc9ee; --degrade:linear-gradient(135deg,#00bef5,#0074c8); --alerta:#f97066; --ok:#47cd89; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--fundo); color:var(--texto); line-height:1.5; }
+    header { background:var(--cartao); border-bottom:1px solid var(--borda); }
+    .barra { max-width:1000px; margin:0 auto; padding:12px 16px; display:flex; flex-wrap:wrap; gap:8px 20px; align-items:center; }
+    a { color:var(--marca); }
+    /* Botão de voltar (Bootstrap) com as cores da Play */
+    .btn-voltar, .btn-acao { --bs-btn-color:var(--marca); --bs-btn-bg:var(--cartao); --bs-btn-border-color:var(--borda);
+      --bs-btn-hover-color:#fff; --bs-btn-hover-bg:var(--marca); --bs-btn-hover-border-color:var(--marca);
+      --bs-btn-active-color:#fff; --bs-btn-active-bg:var(--marca); --bs-btn-active-border-color:var(--marca);
+      --bs-btn-focus-shadow-rgb:0,190,245; --bs-btn-font-weight:600; --bs-btn-padding-x:.95rem; --bs-btn-padding-y:.4rem;
+      border-radius:999px; white-space:nowrap; text-decoration:none; }
+    .btn-voltar svg, .btn-acao svg, .btn-marca svg { width:1em; height:1em; margin-right:.4rem; vertical-align:-.125em; }
+    .btn-acao { border-radius:8px; }
+    .btn-perigo { --bs-btn-color:var(--alerta); --bs-btn-bg:var(--cartao); --bs-btn-border-color:var(--borda);
+      --bs-btn-hover-color:#fff; --bs-btn-hover-bg:var(--alerta); --bs-btn-hover-border-color:var(--alerta);
+      --bs-btn-active-color:#fff; --bs-btn-active-bg:var(--alerta); --bs-btn-active-border-color:var(--alerta);
+      --bs-btn-focus-shadow-rgb:180,35,24; --bs-btn-font-weight:600; border-radius:8px; }
+    .btn-perigo svg { width:1em; height:1em; margin-right:.4rem; vertical-align:-.125em; }
+    .btn-acao, .btn-perigo, .btn-voltar { background-image:none; }
+    /* Cartões de módulo (página inicial e índice de relatórios) */
+    .secao { font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:26px 0 10px; }
+    .modulos { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+    .modulo { display:block; text-decoration:none; color:inherit; background:var(--cartao); border:1px solid var(--borda); border-radius:12px; padding:16px; transition:transform .12s, box-shadow .12s, border-color .12s; }
+    a.modulo:hover { transform:translateY(-2px); border-color:var(--ciano); box-shadow:0 6px 18px rgba(0,116,200,.12); }
+    .modulo.breve { opacity:.6; cursor:default; }
+    .icone { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; margin-bottom:12px; }
+    .icone.azul { background:rgba(0,116,200,.14); }
+    .icone.ciano { background:rgba(0,190,245,.16); }
+    .icone.marinho { background:rgba(5,56,92,.14); }
+    .modulo h3 { margin:0 0 2px; font-size:1.05rem; color:var(--marinho); }
+    .modulo p { margin:0; font-size:.9rem; color:var(--suave); }
+    /* Impressão: só o conteúdo, em preto e branco */
+    @media print {
+      header, .no-print, .btn-voltar { display:none !important; }
+      body { background:#fff !important; color:#000 !important; }
+      .cartao { border:1px solid #999 !important; background:#fff !important; color:#000 !important; box-shadow:none !important; }
+      .table-uruz { --bs-table-color:#000; --bs-table-border-color:#bbb; }
+      h1, th, .suave { color:#000 !important; }
+      main { max-width:none !important; padding:0 !important; }
+    }
+    .so-icone svg { margin-right:0 !important; }
+    .btn.so-icone { padding-left:.6rem; padding-right:.6rem; }
+    .acoes { display:inline-flex; flex-wrap:nowrap; gap:6px; justify-content:flex-end; }
+    .acoes form { margin:0; }
+    .btn-marca { --bs-btn-color:#fff; --bs-btn-hover-color:#fff; --bs-btn-active-color:#fff; --bs-btn-border-color:transparent;
+      --bs-btn-hover-border-color:transparent; --bs-btn-active-border-color:transparent; --bs-btn-focus-shadow-rgb:0,190,245;
+      --bs-btn-font-weight:600; background-image:var(--degrade); border:0; border-radius:8px; }
+    .btn-marca:hover, .btn-marca:focus { filter:brightness(1.1); }
+    /* Tabela do Bootstrap nas cores do sistema (claro e escuro) */
+    .table-uruz { --bs-table-color:var(--texto); --bs-table-bg:transparent; --bs-table-border-color:var(--borda);
+      --bs-table-hover-color:var(--texto); --bs-table-hover-bg:rgba(0,190,245,.08); }
+    .table-uruz th { white-space:nowrap; }
+    .barra { flex-wrap:nowrap !important; gap:12px !important; }
+    .usuario { color:var(--suave); white-space:nowrap; font-size:.95rem; }
+    .usuario small { font-size:inherit; }
+    button.sair { padding:5px 14px; font-size:.9rem; }
+    @media (max-width:520px) { .usuario small { display:none; } .marca small { display:none; } }
+    .barra a { color:var(--texto); text-decoration:none; }
+    .barra a:hover { color:var(--marca); }
+    .marca { display:flex; align-items:center; gap:10px; font-weight:700; color:var(--marinho) !important; }
+    .marca img { width:32px; height:32px; }
+    .marca small { display:block; font-weight:500; font-size:.7rem; letter-spacing:.08em; color:var(--suave); text-transform:uppercase; }
+    .logo-login { display:block; width:150px; margin:0 auto 20px; }
+    .espaco { flex:1; }
+    main { max-width:1000px; margin:0 auto; padding:24px 16px; }
+    h1 { font-size:1.5rem; margin:0 0 16px; }
+    .cartao { background:var(--cartao); border:1px solid var(--borda); border-radius:10px; padding:16px; overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:.95rem; }
+    th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--borda); white-space:nowrap; }
+    th { color:var(--suave); font-weight:600; font-size:.85rem; }
+    .num { text-align:right; font-variant-numeric: tabular-nums; }
+    .botao, button { display:inline-block; background:var(--degrade); color:#fff; border:0; border-radius:8px; padding:8px 14px; font:inherit; cursor:pointer; text-decoration:none; }
+    .botao.sec, button.sec { background:transparent; color:var(--marca); border:1px solid var(--borda); }
+    h1 { color:var(--marinho); }
+    th { color:var(--marinho); }
+    form.inline { display:inline; margin:0; }
+    .campo { margin-bottom:14px; }
+    .campo label { display:block; font-weight:600; margin-bottom:4px; }
+    .campo input[type=date], .campo input[type=datetime-local], .campo input[type=month], .campo input[type=file], .campo textarea { width:100%; max-width:420px; padding:8px 10px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; }
+    .mensagens li.error { border-left-color:var(--alerta); }
+    .selo { display:inline-block; font-size:.78rem; font-weight:700; border-radius:999px; padding:2px 10px; border:1px solid var(--borda); }
+    .selo.vigente { color:var(--ok); border-color:var(--ok); }
+    .selo.negociacao { color:var(--marca); border-color:var(--marca); }
+    .selo.encerrado, .selo.rescindido { color:var(--suave); }
+    .selo.vencido { color:var(--alerta); border-color:var(--alerta); }
+    .selo.a_vencer { color:#b54708; border-color:#b54708; }
+    @media (prefers-color-scheme: dark) { .selo.a_vencer { color:#fdb022; border-color:#fdb022; } }
+    .selo.co-aguardando { color:var(--marca); border-color:var(--marca); }
+    .selo.co-retirada { color:var(--ok); border-color:var(--ok); }
+    .selo.co-devolvida { color:var(--suave); }
+    .selo.st-aberto { color:var(--marca); border-color:var(--marca); }
+    .selo.st-andamento { color:#7a5af8; border-color:#7a5af8; }
+    .selo.st-aguardando { color:#b54708; border-color:#b54708; }
+    .selo.st-resolvido { color:var(--ok); border-color:var(--ok); }
+    .selo.st-cancelado { color:var(--suave); }
+    .selo.pr-1 { color:var(--suave); }
+    .selo.pr-2 { color:var(--marca); border-color:var(--marca); }
+    .selo.pr-3 { color:#b54708; border-color:#b54708; }
+    .selo.pr-4 { color:var(--alerta); border-color:var(--alerta); font-weight:800; }
+    @media (prefers-color-scheme: dark) { .selo.st-andamento { color:#a48afb; border-color:#a48afb; } .selo.st-aguardando, .selo.pr-3 { color:#fdb022; border-color:#fdb022; } }
+    dl.dados { display:grid; grid-template-columns:max-content 1fr; gap:6px 24px; margin:0; }
+    dl.dados dt { color:var(--suave); }
+    dl.dados dd { margin:0; }
+    .campo input[type=text], .campo input[type=email], .campo input[type=number], .campo input[type=password], .campo select { width:100%; max-width:420px; padding:8px 10px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; }
+    .ajuda { color:var(--suave); font-size:.85rem; }
+    .erro { color:var(--alerta); font-size:.9rem; }
+    .mensagens { list-style:none; padding:0; margin:0 0 16px; }
+    .mensagens li { background:var(--cartao); border:1px solid var(--borda); border-left:4px solid var(--ok); border-radius:8px; padding:8px 12px; margin-bottom:6px; }
+    .grade { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; }
+    .indicador { font-size:2rem; font-weight:700; }
+    .suave { color:var(--suave); }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="barra">
+      <a class="marca" href="{% url 'inicio' %}"><img src="{% static 'img/simbolo.png' %}" alt=""><span>Edifício Uruz<small>Play Participações</small></span></a>
+      {% if user.is_authenticated %}
+        <span class="espaco"></span>
+        <span class="usuario">{{ user }}<small> · {{ user.get_perfil_display }}</small></span>
+        <form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="sec sair" type="submit">Sair</button></form>
+      {% endif %}
+    </nav>
+  </header>
+  <main>
+    {% if user.is_authenticated and request.path != '/' %}
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h1 class="mb-0">{% block h1 %}{% endblock %}</h1>
+        {% block voltar %}
+          <a class="btn btn-sm btn-voltar" href="{% url 'inicio' %}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Início
+          </a>
+        {% endblock %}
+      </div>
+    {% endif %}
+    {% if messages %}<ul class="mensagens">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
+    {% block conteudo %}{% endblock %}
+  </main>
+</body>
+</html>

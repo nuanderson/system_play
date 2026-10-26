@@ -1,0 +1,8 @@
+# Fim de linha: scripts e arquivos do Docker sempre com LF (o container é Linux)
+* text=auto
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+.dockerignore text eol=lf
+*.png binary
+*.webp binary

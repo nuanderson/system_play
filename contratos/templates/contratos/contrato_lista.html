@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block titulo %}Contratos · Edifício Uruz{% endblock %}
+{% block h1 %}Contratos{% endblock %}
+{% block conteudo %}
+<form method="get" class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  {% if user.e_sindico %}
+    <a class="btn btn-marca" href="{% url 'contrato_criar' %}">{% include 'partials/icone.html' with nome='mais' %}Novo contrato</a>
+  {% endif %}
+  <span class="ms-auto"></span>
+  <label for="status" class="suave">Situação</label>
+  <select id="status" name="status" onchange="this.form.submit()" style="padding:8px 10px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit;">
+    <option value="">Todas</option>
+    {% for valor, nome in opcoes_status %}<option value="{{ valor }}"{% if valor == status_escolhido %} selected{% endif %}>{{ nome }}</option>{% endfor %}
+  </select>
+</form>
+<div class="cartao">
+  <div class="table-responsive">
+    <table class="table table-uruz table-hover align-middle mb-0">
+      <thead>
+        <tr><th>Unidade</th><th>Locatário</th><th>Situação</th><th>Início</th><th>Fim</th><th class="text-end">Aluguel</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in contratos %}
+          <tr>
+            <td>{{ c.unidade }}</td>
+            <td>{{ c.locatario }}</td>
+            <td>
+              <span class="selo {{ c.status }}">{{ c.get_status_display }}</span>
+              {% if c.situacao_vencimento == 'vencido' %}<span class="selo vencido">Vencido</span>
+              {% elif c.situacao_vencimento == 'a_vencer' %}<span class="selo a_vencer">Vence em {{ c.dias_para_vencer }} dias</span>{% endif %}
+            </td>
+            <td>{{ c.data_inicio|date:"d/m/Y"|default:"—" }}</td>
+            <td>{{ c.data_fim|date:"d/m/Y"|default:"—" }}</td>
+            <td class="text-end">R$ {{ c.valor_aluguel|floatformat:"2g" }}</td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-acao" href="{% url 'contrato_detalhe' c.pk %}">{% include 'partials/icone.html' with nome='olho' %}Abrir</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="suave">Nenhum contrato encontrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

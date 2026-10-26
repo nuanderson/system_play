@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block titulo %}Entrar · Edifício Uruz{% endblock %}
+{% block conteudo %}
+<style>
+  .login .campo input { background:#fff; color:#0b2a42; border-color:#b9cfe0; width:100%; max-width:none; }
+</style>
+<div class="cartao login" style="max-width:420px; margin:24px auto 0; background:#fff; color:#0b2a42;">
+  <img class="logo-login" src="{% static 'img/logo.png' %}" alt="Play Participações">
+  <h1 style="text-align:center; color:#05385c;">Edifício Uruz</h1>
+  <form method="post">{% csrf_token %}
+    {% if form.non_field_errors %}<p class="erro">Usuário ou senha incorretos.</p>{% endif %}
+    <div class="campo"><label for="{{ form.username.id_for_label }}">Usuário</label>{{ form.username }}</div>
+    <div class="campo"><label for="{{ form.password.id_for_label }}">Senha</label>{{ form.password }}</div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit">Entrar</button>
+  </form>
+</div>
+{% endblock %}

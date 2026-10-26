@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ item.numero }} · Edifício Uruz{% endblock %}
+{% block h1 %}{{ item.numero }} · {{ item.get_tipo_display }} para {{ item.unidade }}{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{% url 'correspondencia_lista' %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Correspondências
+  </a>
+{% endblock %}
+{% block conteudo %}
+<style>
+  .titulo-cartao { font-size:.8rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--suave); margin-bottom:10px; }
+  .foto-grande { width:100%; max-height:420px; object-fit:contain; border-radius:8px; border:1px solid var(--borda); background:#0001; }
+</style>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="cartao mb-3">
+      <div class="mb-3">
+        <span class="selo co-{{ item.status }}">{{ item.get_status_display }}</span>
+        {% if item.parada %}<span class="selo vencido">parada há {{ item.dias_aguardando }} dias</span>{% endif %}
+      </div>
+      <dl class="dados">
+        <dt>Unidade</dt><dd>{{ item.unidade }}</dd>
+        <dt>Destinatário</dt><dd>{{ item.destinatario|default:"—" }}</dd>
+        <dt>Recebida em</dt><dd>{{ item.recebido_em|date:"d/m/Y H:i" }}{% if item.registrado_por %} · registrada por {{ item.registrado_por }}{% endif %}</dd>
+        {% if item.observacoes %}<dt>Observações</dt><dd>{{ item.observacoes }}</dd>{% endif %}
+        {% if item.status == 'retirada' %}
+          <dt>Retirada por</dt><dd>{{ item.retirada_por }}</dd>
+          <dt>Retirada em</dt><dd>{{ item.retirada_em|date:"d/m/Y H:i" }}{% if item.baixa_por %} · baixa de {{ item.baixa_por }}{% endif %}</dd>
+        {% elif item.status == 'devolvida' %}
+          <dt>Devolvida em</dt><dd>{{ item.retirada_em|date:"d/m/Y H:i" }}{% if item.baixa_por %} · por {{ item.baixa_por }}{% endif %}</dd>
+        {% endif %}
+        {% if item.baixa_obs %}<dt>{% if item.status == 'devolvida' %}Motivo{% else %}Observação da baixa{% endif %}</dt><dd>{{ item.baixa_obs }}</dd>{% endif %}
+      </dl>
+    </div>
+    {% if item.tem_foto %}
+      <div class="cartao">
+        <div class="titulo-cartao">Foto</div>
+        <a href="{% url 'correspondencia_foto' item.pk %}" target="_blank" rel="noopener"><img class="foto-grande" src="{% url 'correspondencia_foto' item.pk %}" alt="Foto da correspondência"></a>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-5">
+    {% if equipe and item.aguardando %}
+      <div class="cartao mb-3">
+        <div class="titulo-cartao">Registrar retirada</div>
+        <form method="post" action="{% url 'correspondencia_baixa' item.pk %}">{% csrf_token %}
+          {% for campo in form_baixa %}
+            <div class="campo">
+              <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+              {{ campo }}
+              {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+          <button class="btn btn-marca" type="submit">{% include 'partials/icone.html' with nome='check' %}Dar baixa</button>
+        </form>
+      </div>
+      <div class="cartao mb-3">
+        <div class="titulo-cartao">Devolver ao remetente</div>
+        <form method="post" action="{% url 'correspondencia_devolver' item.pk %}" onsubmit="return confirm('Marcar como devolvida ao remetente?');">{% csrf_token %}
+          {% for campo in form_devolucao %}
+            <div class="campo">
+              <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+              {{ campo }}
+              {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+          <button class="btn btn-perigo" type="submit">Devolver</button>
+        </form>
+      </div>
+      <a class="btn btn-acao" href="{% url 'correspondencia_editar' item.pk %}">{% include 'partials/icone.html' with nome='lapis' %}Editar dados</a>
+    {% elif item.aguardando %}
+      <div class="cartao"><p class="mb-0">Esta correspondência está na portaria, aguardando retirada. Procure a equipe do prédio.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

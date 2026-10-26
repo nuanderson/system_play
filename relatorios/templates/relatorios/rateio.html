@@ -1,0 +1,38 @@
+{% extends 'relatorios/base_relatorio.html' %}
+{% block filtros %}
+  <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Mês</label>
+    <select name="competencia" onchange="this.form.submit()">
+      {% for c in competencias %}<option value="{{ c.pk }}"{% if c.pk == escolhida.pk %} selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select></div>
+{% endblock %}
+{% block corpo %}
+{% with d=relatorio_dados %}
+{% if d %}
+  <div class="resumo">
+    <div class="cartao"><div class="suave">Total rateado</div><div class="valor">R$ {{ d.total|floatformat:"2g" }}</div></div>
+    <div class="cartao"><div class="suave">Situação</div><div class="valor" style="font-size:1.1rem">{{ d.competencia.get_status_display }}</div></div>
+    {% if d.sem_contrato %}<div class="cartao"><div class="suave">Custo da Play (unidades sem contrato)</div><div class="valor">R$ {{ d.sem_contrato|floatformat:"2g" }}</div></div>{% endif %}
+  </div>
+  <div class="cartao">
+    <div class="titulo-cartao">Rateio de {{ d.competencia }}</div>
+    <div class="table-responsive">
+      <table class="table table-uruz mb-0 align-middle">
+        <thead><tr><th>Unidade</th><th>Locatário</th><th class="text-end">Área (m²)</th><th class="text-end">Energia</th><th class="text-end">Água</th><th class="text-end">Demais</th><th class="text-end">Total</th><th class="text-end">%</th></tr></thead>
+        <tbody>
+          {% for l in d.linhas %}
+            <tr><td>{{ l.item.unidade }}</td>
+              <td>{% if l.item.locatario %}{{ l.item.locatario }}{% else %}<span class="suave">sem contrato — Play</span>{% endif %}</td>
+              <td class="text-end">{{ l.item.area }}</td>
+              <td class="text-end">{{ l.item.energia|floatformat:"2g" }}</td><td class="text-end">{{ l.item.agua|floatformat:"2g" }}</td><td class="text-end">{{ l.item.demais|floatformat:"2g" }}</td>
+              <td class="text-end"><strong>{{ l.item.total|floatformat:"2g" }}</strong></td><td class="text-end">{{ l.percentual|floatformat:1 }}%</td></tr>
+          {% endfor %}
+        </tbody>
+        <tfoot><tr><td colspan="3">Total</td><td class="text-end">{{ d.rateio.total_energia|floatformat:"2g" }}</td><td class="text-end">{{ d.rateio.total_agua|floatformat:"2g" }}</td><td class="text-end">{{ d.rateio.total_demais|floatformat:"2g" }}</td><td class="text-end">{{ d.total|floatformat:"2g" }}</td><td class="text-end">100%</td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+{% else %}
+  <div class="cartao"><p class="mb-0 suave">Este mês ainda não tem rateio calculado. Calcule em Condomínio e rateio.</p></div>
+{% endif %}
+{% endwith %}
+{% endblock %}

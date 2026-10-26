@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ titulo }} · Edifício Uruz{% endblock %}
+{% block h1 %}{{ titulo }}{% endblock %}
+{% block conteudo %}
+<div class="cartao">
+  <form method="post"{% if form.is_multipart %} enctype="multipart/form-data"{% endif %}>{% csrf_token %}
+    {% for campo in form %}
+      <div class="campo">
+        <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        {{ campo }}
+        {% if campo.help_text %}<div class="ajuda">{{ campo.help_text }}</div>{% endif %}
+        {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <button type="submit">Salvar</button>
+    {% if botao_extra %}<button type="submit" name="outra" value="1" class="btn btn-acao">{{ botao_extra }}</button>{% endif %}
+    <a class="botao sec" href="javascript:history.back()">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

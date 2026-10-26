@@ -1,0 +1,74 @@
+{% extends 'relatorios/base_relatorio.html' %}
+{% block corpo %}
+{% with d=relatorio_dados %}
+<div class="resumo">
+  <div class="cartao"><div class="suave">Em atraso</div><div class="valor" style="color:var(--alerta)">R$ {{ d.total|floatformat:"2g" }}</div></div>
+  <div class="cartao"><div class="suave">Cobranças atrasadas</div><div class="valor">{{ d.atrasadas|length }}</div></div>
+  <div class="cartao"><div class="suave">A vencer (em aberto)</div><div class="valor">R$ {{ d.a_vencer|floatformat:"2g" }}</div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="cartao h-100">
+      <div class="titulo-cartao">Por locatário</div>
+      <div class="table-responsive">
+        <table class="table table-uruz mb-0 align-middle">
+          <thead><tr><th>Locatário</th><th>Unidades</th><th class="text-end">Cobranças</th><th class="text-end">Maior atraso</th><th class="text-end">Valor</th></tr></thead>
+          <tbody>
+            {% for x in d.devedores %}
+              <tr><td>{{ x.locatario }}</td><td>{{ x.unidades }}</td><td class="text-end">{{ x.quantidade }}</td><td class="text-end">{{ x.maior_atraso }} d</td><td class="text-end"><strong>R$ {{ x.total|floatformat:"2g" }}</strong></td></tr>
+            {% empty %}<tr><td colspan="5" class="suave">Nenhuma cobrança em atraso.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="cartao h-100">
+      <div class="titulo-cartao">Por faixa de atraso</div>
+      <table class="table table-uruz mb-0 align-middle">
+        <thead><tr><th>Faixa</th><th class="text-end">Cobranças</th><th class="text-end">Valor</th></tr></thead>
+        <tbody>
+          {% for nome, f in d.faixas.items %}
+            <tr><td>{{ nome }}</td><td class="text-end">{{ f.quantidade }}</td><td class="text-end">R$ {{ f.total|floatformat:"2g" }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="cartao mb-3">
+  <div class="titulo-cartao">Cobranças em atraso</div>
+  <div class="table-responsive">
+    <table class="table table-uruz mb-0 align-middle">
+      <thead><tr><th>Locatário</th><th>Unidade</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Atraso</th><th class="text-end">Valor</th></tr></thead>
+      <tbody>
+        {% for c in d.atrasadas %}
+          <tr><td>{{ c.locatario }}</td><td>{{ c.unidade }}</td><td>{{ c.get_tipo_display }}</td><td>{{ c.referencia|date:"m/Y" }}</td>
+            <td>{{ c.vencimento|date:"d/m/Y" }}</td><td class="text-end">{{ c.dias_atraso }} d</td><td class="text-end">R$ {{ c.valor|floatformat:"2g" }}</td></tr>
+        {% empty %}<tr><td colspan="7" class="suave">Nenhuma cobrança em atraso.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endwith %}
+
+<div class="cartao">
+  <div class="titulo-cartao">Resumo mensal de cobranças (últimos 12 meses)</div>
+  <div class="table-responsive">
+    <table class="table table-uruz mb-0 align-middle">
+      <thead><tr><th>Referência</th><th class="text-end">Emitido</th><th class="text-end">Pago</th><th class="text-end">Em aberto</th><th class="text-end">Atrasado</th></tr></thead>
+      <tbody>
+        {% for m in resumo %}
+          <tr><td>{{ m.referencia|date:"m/Y" }}</td><td class="text-end">{{ m.emitido|floatformat:"2g" }}</td><td class="text-end">{{ m.pago|floatformat:"2g" }}</td>
+            <td class="text-end">{{ m.aberto|floatformat:"2g" }}</td><td class="text-end">{{ m.atrasado|floatformat:"2g" }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="suave">Sem cobranças.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

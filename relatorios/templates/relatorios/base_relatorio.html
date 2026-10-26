@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block titulo %}{{ relatorio.titulo }} · Edifício Uruz{% endblock %}
+{% block h1 %}{{ relatorio.titulo }}{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{% url 'relatorios' %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Relatórios
+  </a>
+{% endblock %}
+{% block conteudo %}
+<style>
+  .titulo-cartao { font-size:.8rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--suave); margin:0 0 10px; }
+  .resumo { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px; }
+  .resumo .cartao { padding:12px 16px; }
+  .resumo .valor { font-size:1.35rem; font-weight:700; color:var(--marca); line-height:1.2; }
+  .barra-uruz { height:10px; border-radius:999px; background:var(--degrade); min-width:2px; }
+  .filtro select, .filtro input { padding:7px 9px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; }
+</style>
+<form method="get" class="d-flex flex-wrap gap-2 align-items-end mb-3 no-print">
+  {% block filtros %}{% endblock %}
+  <span class="ms-auto"></span>
+  <button class="btn btn-acao" type="button" onclick="window.print()">Imprimir</button>
+  <a class="btn btn-marca" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}formato=csv">{% include 'partials/icone.html' with nome='baixar' %}Exportar CSV</a>
+</form>
+{% block corpo %}{% endblock %}
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block titulo %}Gerar aluguéis · Edifício Uruz{% endblock %}
+{% block h1 %}Gerar cobranças de aluguel{% endblock %}
+{% block conteudo %}
+<div class="cartao">
+  <form method="post">{% csrf_token %}
+    {% for campo in form %}
+      <div class="campo">
+        <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+        {{ campo }}
+        {% for e in campo.errors %}<div class="erro">{{ e }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <button type="submit">Gerar</button>
+    <a class="botao sec" href="{% url 'cobranca_lista' %}">Cancelar</a>
+  </form>
+  <p class="ajuda">Cria uma cobrança por contrato vigente no mês, com o valor do aluguel e o dia de vencimento do contrato. Não calcula valor proporcional de mês incompleto, e não duplica cobranças que já existem.</p>
+</div>
+{% endblock %}

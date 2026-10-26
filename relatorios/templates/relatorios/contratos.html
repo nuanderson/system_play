@@ -1,0 +1,37 @@
+{% extends 'relatorios/base_relatorio.html' %}
+{% block corpo %}
+{% with d=relatorio_dados %}
+<div class="resumo">
+  <div class="cartao"><div class="suave">Contratos vigentes</div><div class="valor">{{ d.vigentes|length }}</div></div>
+  <div class="cartao"><div class="suave">Receita mensal de aluguel</div><div class="valor">R$ {{ d.receita_mensal|floatformat:"2g" }}</div></div>
+  <div class="cartao"><div class="suave">Vencem em até {{ d.dias_alerta }} dias</div><div class="valor">{{ d.a_vencer|length }}</div></div>
+  <div class="cartao"><div class="suave">Vencidos</div><div class="valor" style="color:var(--alerta)">{{ d.vencidos|length }}</div></div>
+  <div class="cartao"><div class="suave">Unidades sem contrato</div><div class="valor">{{ d.vagas|length }}</div></div>
+</div>
+
+<div class="cartao mb-3">
+  <div class="titulo-cartao">Contratos vigentes (do que vence primeiro)</div>
+  <div class="table-responsive">
+    <table class="table table-uruz mb-0 align-middle">
+      <thead><tr><th>Unidade</th><th>Locatário</th><th>Início</th><th>Fim</th><th>Situação</th><th class="text-end">Aluguel</th><th>Reajuste</th></tr></thead>
+      <tbody>
+        {% for c in d.vigentes %}
+          <tr><td>{{ c.unidade }}</td><td>{{ c.locatario }}</td><td>{{ c.data_inicio|date:"d/m/Y" }}</td><td>{{ c.data_fim|date:"d/m/Y"|default:"—" }}</td>
+            <td>{% if c.estado == 'vencido' %}<span class="selo vencido">Vencido</span>{% elif c.estado == 'a_vencer' %}<span class="selo a_vencer">Vence em {{ c.dias_para_vencer }} dias</span>{% else %}<span class="selo vigente">Em dia</span>{% endif %}</td>
+            <td class="text-end">R$ {{ c.valor_aluguel|floatformat:"2g" }}</td>
+            <td>{{ c.get_indice_reajuste_display }}{% if c.mes_reajuste %} · mês {{ c.mes_reajuste }}{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="7" class="suave">Nenhum contrato vigente.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6"><div class="cartao h-100"><div class="titulo-cartao">Unidades sem contrato vigente</div>
+    {% for u in d.vagas %}<div>{{ u.nome }}</div>{% empty %}<span class="suave">Todas as unidades têm contrato.</span>{% endfor %}</div></div>
+  <div class="col-md-6"><div class="cartao h-100"><div class="titulo-cartao">Em negociação</div>
+    {% for c in d.em_negociacao %}<div>{{ c.unidade }} — {{ c.locatario }}</div>{% empty %}<span class="suave">Nenhum contrato em negociação.</span>{% endfor %}</div></div>
+</div>
+{% endwith %}
+{% endblock %}

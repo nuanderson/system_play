@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block titulo %}Contrato · {{ contrato.unidade }} · Edifício Uruz{% endblock %}
+{% block h1 %}{{ contrato.unidade }} — {{ contrato.locatario }}{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{% url 'contrato_lista' %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Contratos
+  </a>
+{% endblock %}
+{% block conteudo %}
+<p>
+  <span class="selo {{ contrato.status }}">{{ contrato.get_status_display }}</span>
+  {% if contrato.situacao_vencimento == 'vencido' %}<span class="selo vencido">Vencido</span>
+  {% elif contrato.situacao_vencimento == 'a_vencer' %}<span class="selo a_vencer">Vence em {{ contrato.dias_para_vencer }} dias</span>{% endif %}
+  {% if user.e_sindico %}<a class="btn btn-sm btn-acao ms-2" href="{% url 'contrato_editar' contrato.pk %}">{% include 'partials/icone.html' with nome='lapis' %}Editar</a>{% endif %}
+</p>
+
+<div class="cartao" style="margin-bottom:16px">
+  <dl class="dados">
+    <dt>Início</dt><dd>{{ contrato.data_inicio|date:"d/m/Y"|default:"—" }}</dd>
+    <dt>Fim</dt><dd>{{ contrato.data_fim|date:"d/m/Y"|default:"—" }}</dd>
+    <dt>Aluguel mensal</dt><dd>R$ {{ contrato.valor_aluguel|floatformat:"2g" }}</dd>
+    <dt>Vencimento</dt><dd>todo dia {{ contrato.dia_vencimento }}</dd>
+    <dt>Reajuste</dt><dd>{{ contrato.get_indice_reajuste_display }}{% if contrato.mes_reajuste %}, no mês {{ contrato.mes_reajuste }}{% endif %}</dd>
+    <dt>Condomínio</dt>
+    <dd>
+      {% if contrato.pct_energia is not None or contrato.pct_agua is not None %}
+        {% if contrato.pct_energia is not None %}{{ contrato.pct_energia|floatformat:"-2" }}% da energia{% endif %}{% if contrato.pct_energia is not None and contrato.pct_agua is not None %}, {% endif %}{% if contrato.pct_agua is not None %}{{ contrato.pct_agua|floatformat:"-2" }}% da água{% endif %}
+        e rateio por área nas demais despesas
+      {% else %}
+        Rateio por área
+      {% endif %}
+    </dd>
+    {% if contrato.observacoes %}<dt>Observações</dt><dd>{{ contrato.observacoes|linebreaksbr }}</dd>{% endif %}
+  </dl>
+</div>
+
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Documentos</div>
+<div class="cartao">
+  <table>
+    <thead><tr><th>Descrição</th><th>Arquivo</th><th>Enviado em</th><th></th></tr></thead>
+    <tbody>
+      {% for d in documentos %}
+        <tr>
+          <td>{{ d.descricao }}</td>
+          <td><a href="{% url 'documento_baixar' d.pk %}">{{ d.nome_original|default:"baixar" }}</a></td>
+          <td>{{ d.enviado_em|date:"d/m/Y H:i" }}</td>
+          <td>
+            {% if user.e_sindico %}
+              <form class="inline" method="post" action="{% url 'documento_excluir' d.pk %}" onsubmit="return confirm('Remover este documento?');">{% csrf_token %}<button class="btn btn-sm btn-perigo" type="submit">{% include 'partials/icone.html' with nome='lixeira' %}Remover</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="suave">Nenhum documento anexado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if form_documento %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'documento_enviar' contrato.pk %}" style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+      {% csrf_token %}
+      <div class="campo" style="margin:0"><label for="{{ form_documento.descricao.id_for_label }}">Descrição</label>{{ form_documento.descricao }}</div>
+      <div class="campo" style="margin:0"><label for="{{ form_documento.arquivo.id_for_label }}">Arquivo</label>{{ form_documento.arquivo }}</div>
+      <button type="submit">Anexar</button>
+    </form>
+    <p class="ajuda">PDF, Word, Excel, JPG ou PNG, até 10 MB.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block titulo %}Rateio {{ competencia }} · Edifício Uruz{% endblock %}
+{% block h1 %}Rateio de {{ competencia }}
+  <span class="selo {% if competencia.status == 'aprovada' %}vigente{% else %}negociacao{% endif %}" style="vertical-align:middle">{{ competencia.get_status_display }}</span>
+{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{% url 'competencia_lista' %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Condomínio
+  </a>
+{% endblock %}
+{% block conteudo %}
+<style>
+  .titulo-secao { font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:24px 0 10px; }
+  .resumo { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:8px; }
+  .resumo .cartao { padding:12px 16px; }
+  .resumo .valor { font-size:1.3rem; font-weight:700; color:var(--marca); }
+  tr.excluida td { opacity:.55; }
+  td.mini input[type=text] { padding:4px 8px; }
+  td.mini select { padding:4px 6px; border:1px solid var(--borda); border-radius:6px; background:var(--cartao); color:var(--texto); font:inherit; }
+  tfoot td { font-weight:700; }
+</style>
+
+
+<div class="resumo">
+  <div class="cartao"><div class="suave">Energia</div><div class="valor">R$ {{ totais.energia|floatformat:"2g" }}</div></div>
+  <div class="cartao"><div class="suave">Água</div><div class="valor">R$ {{ totais.agua|floatformat:"2g" }}</div></div>
+  <div class="cartao"><div class="suave">Demais despesas</div><div class="valor">R$ {{ totais.demais|floatformat:"2g" }}</div></div>
+  <div class="cartao"><div class="suave">Total no rateio</div><div class="valor">R$ {{ total_rateado|floatformat:"2g" }}</div></div>
+</div>
+<p class="ajuda">
+  {% if excluidas %}Fora do rateio: R$ {{ excluidas|floatformat:"2g" }}. {% endif %}
+  {% if multas %}Multas e juros pagos por atraso (informativo, não entram): R$ {{ multas|floatformat:"2g" }}.{% endif %}
+</p>
+
+<div class="titulo-secao">Despesas</div>
+<form method="post" action="{% url 'despesas_salvar' competencia.pk %}">{% csrf_token %}
+  {{ formset.management_form }}
+  {% if formset.non_form_errors %}<p class="erro">{{ formset.non_form_errors }}</p>{% endif %}
+  <div class="cartao">
+    <table>
+      <thead><tr><th>Vencimento</th><th>Fornecedor / descrição</th><th>Categoria</th><th class="num">Valor</th><th>Tipo</th><th>Entra</th><th>Motivo da exclusão</th></tr></thead>
+      <tbody>
+        {% for form in formset %}
+          {% with d=form.instance %}
+          <tr class="{% if not d.entra_no_rateio %}excluida{% endif %}">
+            <td>{{ d.vencimento|date:"d/m" }}</td>
+            <td style="white-space:normal; min-width:240px;">{{ d.fornecedor }}<div class="suave">{{ d.descricao }}</div></td>
+            <td>{{ d.categoria|default:"—" }}</td>
+            <td class="num">{{ d.valor|floatformat:"2g" }}{% if d.multa_juros %}<div class="suave">+ {{ d.multa_juros|floatformat:"2g" }} multa/juros</div>{% endif %}</td>
+            {% if competencia.editavel %}
+              <td class="mini">{{ form.id }}{{ form.tipo }}</td>
+              <td class="mini">{{ form.entra_no_rateio }}</td>
+              <td class="mini">{{ form.motivo_exclusao }}{% for e in form.motivo_exclusao.errors %}<div class="erro">{{ e }}</div>{% endfor %}</td>
+            {% else %}
+              <td>{{ d.get_tipo_display }}</td>
+              <td>{% if d.entra_no_rateio %}Sim{% else %}Não{% endif %}</td>
+              <td>{{ d.motivo_exclusao }}</td>
+            {% endif %}
+          </tr>
+          {% endwith %}
+        {% empty %}
+          <tr><td colspan="7" class="suave">Nenhuma despesa.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if competencia.editavel %}<p><button type="submit">Salvar marcações</button> <span class="ajuda">Desmarque "Entra" para multas, despesas da Play ou o que não deve ser rateado, e informe o motivo.</span></p>{% endif %}
+</form>
+
+{% if competencia.editavel %}
+  <form method="post" action="{% url 'rateio_calcular' competencia.pk %}" style="margin-top:12px">{% csrf_token %}
+    <button type="submit">{% if rateio %}Recalcular rateio{% else %}Calcular rateio{% endif %}</button>
+  </form>
+{% endif %}
+
+{% if rateio %}
+  <div class="titulo-secao">Resultado do rateio</div>
+  <div class="cartao">
+    <table>
+      <thead><tr><th>Unidade</th><th>Locatário</th><th class="num">Área (m²)</th><th class="num">Energia</th><th class="num">Água</th><th class="num">Demais</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        {% for i in itens %}
+          <tr>
+            <td>{{ i.unidade }}</td>
+            <td>{% if i.locatario %}{{ i.locatario }}{% else %}<span class="suave">sem contrato — custo da Play</span>{% endif %}</td>
+            <td class="num">{{ i.area }}</td>
+            <td class="num">{{ i.energia|floatformat:"2g" }}{% if i.pct_energia is not None %} <span class="suave">({{ i.pct_energia|floatformat:"-2" }}%)</span>{% endif %}</td>
+            <td class="num">{{ i.agua|floatformat:"2g" }}{% if i.pct_agua is not None %} <span class="suave">({{ i.pct_agua|floatformat:"-2" }}%)</span>{% endif %}</td>
+            <td class="num">{{ i.demais|floatformat:"2g" }}</td>
+            <td class="num"><strong>{{ i.total|floatformat:"2g" }}</strong></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><td colspan="3">Total</td><td class="num">{{ rateio.total_energia|floatformat:"2g" }}</td><td class="num">{{ rateio.total_agua|floatformat:"2g" }}</td><td class="num">{{ rateio.total_demais|floatformat:"2g" }}</td><td class="num">{{ rateio.total|floatformat:"2g" }}</td></tr>
+      </tfoot>
+    </table>
+  </div>
+  {% if competencia.status == 'calculada' %}
+    <form method="post" action="{% url 'rateio_aprovar' competencia.pk %}" style="margin-top:12px" onsubmit="return confirm('Aprovar o rateio e gerar as cobranças de condomínio?');">{% csrf_token %}
+      <button type="submit">Aprovar e gerar cobranças</button>
+      <span class="ajuda">Depois de aprovado, o mês fica travado. O vencimento padrão é o dia do contrato, no mês seguinte.</span>
+    </form>
+  {% elif competencia.status == 'aprovada' %}
+    <p class="ajuda">Aprovado em {{ rateio.aprovado_em|date:"d/m/Y H:i" }}{% if rateio.aprovado_por %} por {{ rateio.aprovado_por }}{% endif %}. <a href="{% url 'cobranca_lista' %}">Ver cobranças</a></p>
+  {% endif %}
+{% endif %}
+{% endblock %}

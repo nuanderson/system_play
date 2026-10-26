@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block titulo %}Condomínio · Edifício Uruz{% endblock %}
+{% block h1 %}Condomínio e rateio{% endblock %}
+{% block conteudo %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn btn-marca" href="{% url 'competencia_nova' %}">{% include 'partials/icone.html' with nome='upload' %}Importar despesas de um mês</a>
+  <a class="btn btn-acao" href="{% url 'cobranca_lista' %}">Cobranças</a>
+</div>
+<div class="cartao">
+  <div class="table-responsive">
+    <table class="table table-uruz table-hover align-middle mb-0">
+      <thead><tr><th>Mês</th><th>Situação</th><th class="text-end">Despesas no rateio</th><th></th></tr></thead>
+      <tbody>
+        {% for c in competencias %}
+          <tr>
+            <td>{{ c }}</td>
+            <td><span class="selo {% if c.status == 'aprovada' %}vigente{% else %}negociacao{% endif %}">{{ c.get_status_display }}</span></td>
+            <td class="text-end">R$ {{ c.despesas_no_rateio|floatformat:"2g" }}</td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-acao" href="{% url 'competencia_detalhe' c.pk %}">{% include 'partials/icone.html' with nome='olho' %}Abrir</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="suave">Nenhum mês importado ainda. Comece importando o relatório de contas a pagar.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

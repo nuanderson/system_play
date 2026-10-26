@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block conteudo %}
+<style>
+  .faixa { background:linear-gradient(120deg,#00bef5 0%,#0074c8 55%,#05385c 100%); color:#fff; border-radius:16px; padding:28px 32px; display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; align-items:center; margin-bottom:24px; }
+  .faixa h1 { color:#fff; font-size:1.8rem; margin:0 0 10px; }
+  .faixa .selo { display:inline-block; background:rgba(255,255,255,.2); border-radius:999px; padding:4px 14px; font-size:.9rem; font-weight:600; }
+  .faixa .data { margin-top:10px; opacity:.95; }
+  .relogio { text-align:right; }
+  .relogio .hora { font-size:3rem; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
+  .relogio .seg { font-size:1.2rem; font-weight:500; opacity:.85; }
+  .relogio small { display:block; margin-top:6px; opacity:.85; }
+  .indicadores { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:28px; }
+  .indicadores .cartao { padding:14px 18px; }
+  .indicadores .valor { font-size:2rem; font-weight:700; color:var(--marca); line-height:1.1; }
+  .etiqueta { display:inline-block; margin-top:8px; font-size:.7rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--suave); border:1px solid var(--borda); border-radius:999px; padding:1px 8px; }
+</style>
+
+<section class="faixa">
+  <div>
+    <h1>{{ saudacao }}, {{ user.first_name|default:user.username }}!</h1>
+    <span class="selo">🏢 Edifício Uruz</span>
+    <div class="data">{{ agora|date:"l, j \d\e F \d\e Y"|lower|capfirst }}</div>
+  </div>
+  <div class="relogio">
+    <div><span class="hora" id="hora">{{ agora|date:"H:i" }}</span><span class="seg" id="seg">:{{ agora|date:"s" }}</span></div>
+    <small>horário de Brasília</small>
+  </div>
+</section>
+
+{% if indicadores %}
+  <div class="indicadores">
+    {% for valor, rotulo in indicadores %}
+      <div class="cartao"><div class="valor">{{ valor }}</div><div class="suave">{{ rotulo }}</div></div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% for nome, itens in secoes %}
+  <div class="secao">{{ nome }}</div>
+  <div class="modulos">
+    {% for m in itens %}
+      {% if m.url %}<a class="modulo" href="{{ m.url }}">{% else %}<div class="modulo breve">{% endif %}
+        <div class="icone {{ m.cor }}">{{ m.icone }}</div>
+        <h3>{{ m.titulo }}</h3>
+        <p>{{ m.texto }}</p>
+        {% if not m.url %}<span class="etiqueta">Em breve</span>{% endif %}
+      {% if m.url %}</a>{% else %}</div>{% endif %}
+    {% endfor %}
+  </div>
+{% endfor %}
+
+<script>
+  (function () {
+    var hora = document.getElementById('hora'), seg = document.getElementById('seg');
+    function dois(n) { return (n < 10 ? '0' : '') + n; }
+    function tick() {
+      var d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+      hora.textContent = dois(d.getHours()) + ':' + dois(d.getMinutes());
+      seg.textContent = ':' + dois(d.getSeconds());
+    }
+    tick(); setInterval(tick, 1000);
+  })();
+</script>
+{% endblock %}

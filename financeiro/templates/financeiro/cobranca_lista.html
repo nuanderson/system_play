@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block titulo %}Cobranças · Edifício Uruz{% endblock %}
+{% block h1 %}Cobranças{% endblock %}
+{% block conteudo %}
+{% if user.e_sindico %}
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-marca" href="{% url 'aluguel_gerar' %}">{% include 'partials/icone.html' with nome='mais' %}Gerar aluguéis do mês</a>
+    <a class="btn btn-acao" href="{% url 'competencia_lista' %}">Condomínio e rateio</a>
+  </div>
+{% endif %}
+
+<div class="grade" style="margin-bottom:16px">
+  <div class="cartao"><div class="suave">Em aberto</div><div class="indicador" style="font-size:1.5rem">R$ {{ total_aberto|floatformat:"2g" }}</div></div>
+  <div class="cartao"><div class="suave">Atrasado</div><div class="indicador" style="font-size:1.5rem; color:var(--alerta)">R$ {{ total_atrasado|floatformat:"2g" }}</div></div>
+</div>
+
+<form method="get" style="margin-bottom:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+  <style>.filtro select, .filtro input { padding:7px 9px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto); font:inherit; }</style>
+  <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Situação</label>
+    <select name="situacao" onchange="this.form.submit()"><option value="">Todas</option>
+      {% for v, n in situacoes %}<option value="{{ v }}"{% if v == filtros.situacao %} selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+  <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Tipo</label>
+    <select name="tipo" onchange="this.form.submit()"><option value="">Todos</option>
+      {% for v, n in tipos %}<option value="{{ v }}"{% if v == filtros.tipo %} selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+  <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Mês</label>
+    <input type="month" name="mes" value="{{ filtros.mes }}" onchange="this.form.submit()"></div>
+  {% if unidades %}
+    <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Unidade</label>
+      <select name="unidade" onchange="this.form.submit()"><option value="">Todas</option>
+        {% for u in unidades %}<option value="{{ u.pk }}"{% if u.pk|stringformat:"s" == filtros.unidade %} selected{% endif %}>{{ u.nome }}</option>{% endfor %}</select></div>
+  {% endif %}
+</form>
+
+<div class="cartao">
+  <div class="table-responsive">
+    <table class="table table-uruz table-hover align-middle mb-0">
+      <thead><tr><th>Unidade</th><th>Locatário</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Valor</th><th>Situação</th>{% if user.e_sindico %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for c in cobrancas %}
+          <tr>
+            <td>{{ c.unidade }}</td>
+            <td>{{ c.locatario }}</td>
+            <td>{{ c.get_tipo_display }}</td>
+            <td>{{ c.referencia|date:"m/Y" }}</td>
+            <td>{{ c.vencimento|date:"d/m/Y" }}</td>
+            <td class="text-end">R$ {{ c.valor|floatformat:"2g" }}</td>
+            <td>
+              {% if c.status == 'paga' %}<span class="selo vigente">Paga {{ c.pago_em|date:"d/m" }}</span>
+              {% elif c.status == 'cancelada' %}<span class="selo encerrado">Cancelada</span>
+              {% elif c.atrasada %}<span class="selo vencido">Atrasada {{ c.dias_atraso }} d</span>
+              {% else %}<span class="selo negociacao">Em aberto</span>{% endif %}
+            </td>
+            {% if user.e_sindico %}
+              <td class="text-end">
+                {% if c.status == 'aberta' %}
+                  <div class="acoes">
+                    <a class="btn btn-sm btn-acao" href="{% url 'cobranca_pagar' c.pk %}">{% include 'partials/icone.html' with nome='check' %}Pagar</a>
+                    <a class="btn btn-sm btn-acao so-icone" href="{% url 'cobranca_editar' c.pk %}" title="Editar" aria-label="Editar">{% include 'partials/icone.html' with nome='lapis' %}</a>
+                    <form method="post" action="{% url 'cobranca_cancelar' c.pk %}" onsubmit="return confirm('Cancelar esta cobrança?');">{% csrf_token %}
+                      <button class="btn btn-sm btn-perigo so-icone" type="submit" title="Cancelar cobrança" aria-label="Cancelar cobrança">{% include 'partials/icone.html' with nome='x' %}</button>
+                    </form>
+                  </div>
+                {% endif %}
+              </td>
+            {% endif %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="8" class="suave">Nenhuma cobrança encontrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
