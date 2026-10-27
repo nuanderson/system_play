@@ -9,7 +9,6 @@ from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.generic import CreateView, ListView, UpdateView
 
-from cadastros.models import Unidade
 
 from .forms import MembroForm, UsuarioForm
 from .models import Usuario

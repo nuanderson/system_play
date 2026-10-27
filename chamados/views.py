@@ -4,7 +4,6 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, ListView
@@ -14,7 +13,7 @@ from core.escopo import empresa_do_usuario, q_escopo, unidade_unica
 from core.permissions import PermissaoRequiredMixin
 
 from .forms import AnexoForm, ChamadoForm, ComentarioForm, GerenciarForm
-from .models import Anexo, Chamado, Comentario, registrar
+from .models import Anexo, Chamado, registrar
 
 
 def chamados_visiveis(usuario):

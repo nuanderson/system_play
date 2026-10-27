@@ -6,7 +6,6 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from cadastros.forms import LocatarioForm
 from cadastros.models import Locatario, Unidade
 from chamados.models import Chamado
 from contratos.models import Contrato

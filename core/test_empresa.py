@@ -1,5 +1,5 @@
 import importlib
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
 from django.apps import apps
