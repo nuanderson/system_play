@@ -52,7 +52,8 @@ class Base(TestCase):
         return Contrato.objects.create(**dados)
 
     def chamado(self, unidade, titulo):
-        return Chamado.objects.create(unidade=unidade, solicitante=self.sindico, titulo=titulo, descricao='d')
+        empresa = Unidade.objects.get(pk=unidade.pk).locatario
+        return Chamado.objects.create(unidade=unidade, locatario=empresa, solicitante=self.sindico, titulo=titulo, descricao='d')
 
     def atrasada(self, unidade, locatario, valor='100.00', dias=5):
         vencimento = timezone.localdate() - timedelta(days=dias)
@@ -132,17 +133,6 @@ class VisibilidadeDeVariasUnidadesTests(Base):
         self.assertNotContains(pagina, 'Chamado Térreo')
         self.assertNotContains(self.client.get(reverse('correspondencia_lista')), 'Para Sala 02')
 
-    def test_filtro_por_unidade_aparece_so_para_quem_tem_mais_de_uma(self):
-        self.client.force_login(self.resp)
-        self.assertContains(self.client.get(reverse('chamado_lista')), 'name="unidade"')
-        pagina = self.client.get(reverse('chamado_lista') + f'?unidade={self.sala1.pk}')
-        self.assertContains(pagina, 'Chamado Sala 01')
-        self.assertNotContains(pagina, 'Chamado Sala 02')
-        # filtrar por uma unidade que não é sua não revela nada
-        self.assertNotContains(self.client.get(reverse('chamado_lista') + f'?unidade={self.sala3.pk}'), 'Chamado alheio')
-        self.client.force_login(self.membro_sala1)
-        self.assertNotContains(self.client.get(reverse('chamado_lista')), 'name="unidade"')
-
     def test_home_soma_as_unidades_da_empresa(self):
         dados = resumos(self.resp)
         self.assertEqual(dados['Contratos'], '3 vigentes')
@@ -152,49 +142,6 @@ class VisibilidadeDeVariasUnidadesTests(Base):
         self.assertEqual([a['texto'] for a in alertas(self.resp)][0], '3 cobranças atrasadas · R$ 300,00')
         self.assertIn('3 correspondências esperando por você', [a['texto'] for a in alertas(self.resp)])
         self.assertEqual(resumos(self.membro_sala1)['Chamados de manutenção'], '1 em aberto')
-
-
-class AbrirChamadoComVariasUnidadesTests(Base):
-    def dados(self, **extra):
-        dados = dict(titulo='Vazamento', categoria='hidraulica', prioridade=2, local='Banheiro', descricao='Pinga')
-        dados.update(extra)
-        return dados
-
-    def test_formulario_pergunta_a_unidade_e_so_oferece_as_da_empresa(self):
-        self.client.force_login(self.resp)
-        form = self.client.get(reverse('chamado_criar')).context['form']
-        self.assertIn('unidade', form.fields)
-        self.assertEqual(sorted(form.fields['unidade'].queryset.values_list('pk', flat=True)), sorted(u.pk for u in self.minhas))
-        self.assertTrue(form.fields['unidade'].required)
-
-    def test_abre_na_unidade_escolhida(self):
-        self.client.force_login(self.resp)
-        self.client.post(reverse('chamado_criar'), self.dados(unidade=self.sala2.pk))
-        chamado = Chamado.objects.get()
-        self.assertEqual((chamado.unidade, chamado.solicitante), (self.sala2, self.resp))
-
-    def test_recusa_sem_unidade_ou_com_unidade_de_outra_empresa(self):
-        self.client.force_login(self.resp)
-        self.client.post(reverse('chamado_criar'), self.dados())
-        self.client.post(reverse('chamado_criar'), self.dados(unidade=self.sala3.pk))
-        self.assertFalse(Chamado.objects.exists())
-
-    def test_com_uma_unidade_so_nao_pergunta_e_usa_a_unica(self):
-        self.client.force_login(self.membro_sala1)
-        self.assertNotIn('unidade', self.client.get(reverse('chamado_criar')).context['form'].fields)
-        self.client.post(reverse('chamado_criar'), self.dados(unidade=self.sala3.pk))  # tentativa de forçar outra unidade
-        self.assertEqual(Chamado.objects.get().unidade, self.sala1)
-
-    def test_empresa_com_uma_unidade_tambem_usa_a_unica(self):
-        self.client.force_login(self.resp_outra)
-        self.client.post(reverse('chamado_criar'), self.dados())
-        self.assertEqual(Chamado.objects.get().unidade, self.sala3)
-
-    def test_empresa_sem_nenhuma_unidade_nao_abre_chamado(self):
-        vazia = Locatario.objects.create(razao_social='Sem unidades')
-        usuario = Usuario.objects.create_user('vazio', password='x', perfil=L, locatario=vazia)
-        self.client.force_login(usuario)
-        self.assertEqual(self.client.get(reverse('chamado_criar')).status_code, 403)
 
 
 class CadastroDoLocatarioComVariasUnidadesTests(Base):

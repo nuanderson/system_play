@@ -12,8 +12,8 @@ class Locatario(models.Model):
     ativo = models.BooleanField('ativo', default=True)
 
     class Meta:
-        verbose_name = 'locatário'
-        verbose_name_plural = 'locatários'
+        verbose_name = 'empresa'
+        verbose_name_plural = 'empresas'
         ordering = ['razao_social']
 
     def __str__(self):
@@ -41,7 +41,7 @@ class Unidade(models.Model):
         help_text='Desmarque para unidades que não participam da divisão por área.',
     )
     locatario = models.ForeignKey(
-        Locatario, verbose_name='locatário', null=True, blank=True,
+        Locatario, verbose_name='empresa', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='unidades',
     )
     ativa = models.BooleanField('ativa', default=True)

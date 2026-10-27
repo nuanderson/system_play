@@ -19,7 +19,7 @@ PERMISSOES = {
     'membros_gerenciar': {LOCATARIO},              # cria e desativa os membros da própria unidade
 
     # Cadastros
-    'cadastros_ver': {SINDICO, ADMINISTRATIVO},    # listas de unidades e locatários
+    'cadastros_ver': {SINDICO, ADMINISTRATIVO},    # listas de unidades e empresas
     'unidades_editar': {SINDICO},                  # mexe nas áreas que definem o rateio
     'locatarios_editar': {SINDICO, ADMINISTRATIVO},
 

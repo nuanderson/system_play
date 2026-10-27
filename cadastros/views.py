@@ -57,10 +57,10 @@ class LocatarioCriar(PermissaoRequiredMixin, CreateView):
     form_class = LocatarioForm
     template_name = 'form.html'
     success_url = reverse_lazy('locatario_lista')
-    extra_context = {'titulo': 'Novo locatário'}
+    extra_context = {'titulo': 'Nova empresa'}
 
     def form_valid(self, form):
-        messages.success(self.request, 'Locatário cadastrado.')
+        messages.success(self.request, 'Empresa cadastrada.')
         return super().form_valid(form)
 
 
@@ -70,8 +70,8 @@ class LocatarioEditar(PermissaoRequiredMixin, UpdateView):
     form_class = LocatarioForm
     template_name = 'form.html'
     success_url = reverse_lazy('locatario_lista')
-    extra_context = {'titulo': 'Editar locatário'}
+    extra_context = {'titulo': 'Editar empresa'}
 
     def form_valid(self, form):
-        messages.success(self.request, 'Locatário atualizado.')
+        messages.success(self.request, 'Empresa atualizada.')
         return super().form_valid(form)

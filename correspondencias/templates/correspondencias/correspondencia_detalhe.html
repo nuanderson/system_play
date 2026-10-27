@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block titulo %}{{ item.numero }} · Edifício Uruz{% endblock %}
-{% block h1 %}{{ item.numero }} · {{ item.get_tipo_display }} para {{ item.unidade }}{% endblock %}
+{% block h1 %}{{ item.numero }} · {{ item.get_tipo_display }} para {{ item.destino }}{% endblock %}
 {% block voltar %}
   <a class="btn btn-sm btn-voltar" href="{% url 'correspondencia_lista' %}">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Correspondências
@@ -19,8 +19,8 @@
         {% if item.parada %}<span class="selo vencido">parada há {{ item.dias_aguardando }} dias</span>{% endif %}
       </div>
       <dl class="dados">
-        <dt>Unidade</dt><dd>{{ item.unidade }}</dd>
-        <dt>Destinatário</dt><dd>{{ item.destinatario|default:"—" }}</dd>
+        <dt>Empresa</dt><dd>{{ item.locatario|default:"—" }}</dd>
+        {% if item.destinatario %}<dt>Aos cuidados de</dt><dd>{{ item.destinatario }}</dd>{% endif %}
         <dt>Recebida em</dt><dd>{{ item.recebido_em|date:"d/m/Y H:i" }}{% if item.registrado_por %} · registrada por {{ item.registrado_por }}{% endif %}</dd>
         {% if item.observacoes %}<dt>Observações</dt><dd>{{ item.observacoes }}</dd>{% endif %}
         {% if item.status == 'retirada' %}

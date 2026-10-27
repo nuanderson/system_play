@@ -54,15 +54,17 @@ Seis perfis. A tabela completa de permissões está num único arquivo, `core/ac
 | Perfil | Pode |
 |---|---|
 | **Síndico** | Tudo, inclusive aprovar o rateio e gerenciar usuários |
-| **Administrativo** | Contratos, locatários, condomínio e rateio (importa, calcula e aprova), cobranças, correspondências, relatórios, mural |
+| **Administrativo** | Contratos, empresas, condomínio e rateio (importa, calcula e aprova), cobranças, correspondências, relatórios, mural |
 | **Equipe e portaria** | Chamados (todos), correspondências (registra, dá baixa, devolve) e mural |
 | **Consulta** | Só leitura: relatórios, contratos e cobranças |
-| **Responsável da unidade** | Contratos e cobranças da própria unidade, chamados e correspondências da unidade, mural, e cadastra/desativa as pessoas da própria unidade |
-| **Membro da unidade** | Chamados e correspondências da unidade, mural |
+| **Responsável da empresa** | Contratos e cobranças da própria unidade, chamados e correspondências da unidade, mural, e cadastra/desativa as pessoas da própria unidade |
+| **Membro da empresa** | Chamados e correspondências da unidade, mural |
 
-**Empresas com mais de uma unidade.** No cadastro do locatário, marque todas as unidades que ele ocupa (só aparecem as livres). Cada unidade continua com o próprio contrato, rateio e cobrança. Responsável e membro são ligados à **empresa** e enxergam as unidades dela (contratos, cobranças, chamados e correspondências); quem recebe uma unidade nova passa a vê-la sozinho. Para limitar uma pessoa a uma só unidade, preencha "Limitar a uma unidade". Ao abrir um chamado, quem tem várias unidades escolhe em qual. Não dá para tirar uma unidade que tenha contrato vigente do locatário, nem criar contrato de outro locatário numa unidade já cadastrada para alguém. Cadastros antigos, ligados só a uma unidade, continuam iguais.
+**Empresa em vez de unidade.** O sistema chama de **Empresa** quem ocupa o prédio (antes, "locatário"). Quem registra correspondência escolhe a **empresa destinatária** numa lista de todas as cadastradas, sem precisar saber a unidade. O chamado também pertence à empresa: a unidade só é preenchida sozinha quando a empresa ocupa uma só. Contrato, rateio e cobrança continuam por unidade, e o formulário do contrato mostra de quem é cada unidade. Chamados e correspondências são vistos por todas as pessoas da empresa, e quem está limitado a uma unidade vê só o que é dela.
 
-Usuários: o síndico cria e gerencia em **Usuários e acessos**; o responsável da unidade gerencia **Pessoas da empresa**. Quem é cadastrado recebe uma **senha provisória**, mostrada uma única vez, e só consegue usar o sistema depois de escolher a própria senha. Desativar um usuário tira o acesso na hora e mantém o histórico. O sistema não deixa desativar a si mesmo, mudar o próprio perfil nem ficar sem síndico ativo. A sessão expira em 12 horas, e o nome no alto da página leva à troca de senha.
+**Empresas com mais de uma unidade.** No cadastro da empresa, marque todas as unidades que ele ocupa (só aparecem as livres). Cada unidade continua com o próprio contrato, rateio e cobrança. Responsável e membro são ligados à **empresa** e enxergam as unidades dela (contratos, cobranças, chamados e correspondências); quem recebe uma unidade nova passa a vê-la sozinho. Para limitar uma pessoa a uma só unidade, preencha "Limitar a uma unidade". Ao abrir um chamado, quem tem várias unidades escolhe em qual. Não dá para tirar uma unidade que tenha contrato vigente da empresa, nem criar contrato de outra empresa numa unidade já cadastrada para alguém. Cadastros antigos, ligados só a uma unidade, continuam iguais.
+
+Usuários: o síndico cria e gerencia em **Usuários e acessos**; o responsável da empresa gerencia **Pessoas da empresa**. Quem é cadastrado recebe uma **senha provisória**, mostrada uma única vez, e só consegue usar o sistema depois de escolher a própria senha. Desativar um usuário tira o acesso na hora e mantém o histórico. O sistema não deixa desativar a si mesmo, mudar o próprio perfil nem ficar sem síndico ativo. A sessão expira em 12 horas, e o nome no alto da página leva à troca de senha.
 
 ## Mural de contatos
 
@@ -88,8 +90,8 @@ Regras do rateio (`financeiro/calculo.py`): quem tem % de energia/água no contr
 
 ## Fase 1 (feita): contratos
 
-Cadastro de contratos por unidade (situação, vigência, aluguel, vencimento, reajuste, % de energia e água para quem paga porcentagem fixa), alerta de vencimento em 90 dias, um contrato vigente por unidade, e anexos (PDF, Word, Excel, JPG, PNG, até 10 MB). Os arquivos só são entregues por uma tela que confere a permissão: o síndico vê tudo, e o responsável da unidade vê só o contrato da própria unidade. Contrato vigente preenche sozinho o locatário da unidade.
+Cadastro de contratos por unidade (situação, vigência, aluguel, vencimento, reajuste, % de energia e água para quem paga porcentagem fixa), alerta de vencimento em 90 dias, um contrato vigente por unidade, e anexos (PDF, Word, Excel, JPG, PNG, até 10 MB). Os arquivos só são entregues por uma tela que confere a permissão: o síndico vê tudo, e o responsável da empresa vê só os contratos da própria empresa. Contrato vigente preenche sozinho a empresa da unidade.
 
 ## Fase 0 (feita)
 
-Login e logout, perfis (síndico, equipe, responsável da unidade, membro), cadastro de unidades e locatários, carga inicial das 11 unidades com as áreas do projeto (soma do rateio: 1.471,35 m²). Usuários são criados pela administração (`/admin/`) por enquanto.
+Login e logout, perfis (síndico, equipe, responsável da empresa, membro), cadastro de unidades e empresas, carga inicial das 11 unidades com as áreas do projeto (soma do rateio: 1.471,35 m²). Usuários são criados pela administração (`/admin/`) por enquanto.

@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
-{% block titulo %}Locatários · Edifício Uruz{% endblock %}
-{% block h1 %}Locatários{% endblock %}
+{% block titulo %}Empresas · Edifício Uruz{% endblock %}
+{% block h1 %}Empresas{% endblock %}
 {% block conteudo %}
 <p>
   <a class="btn btn-marca" href="{% url 'locatario_criar' %}">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>Novo locatário
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>Nova empresa
   </a>
 </p>
 <div class="cartao">
@@ -28,7 +28,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="6" class="suave">Nenhum locatário cadastrado.</td></tr>
+          <tr><td colspan="6" class="suave">Nenhuma empresa cadastrada.</td></tr>
         {% endfor %}
       </tbody>
     </table>

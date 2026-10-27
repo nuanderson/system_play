@@ -225,9 +225,11 @@ class EquipeEPortariaTests(Base):
         from django.utils import timezone
         from correspondencias.models import Correspondencia
         self.client.force_login(self.u[E])
+        empresa = Locatario.objects.create(razao_social='Empresa Teste')
+        Unidade.objects.filter(pk=self.sala1.pk).update(locatario=empresa)
         agora = timezone.localtime().strftime('%Y-%m-%dT%H:%M')
         self.client.post(reverse('correspondencia_criar'), dict(
-            unidade=self.sala1.pk, tipo='encomenda', destinatario='Maria', recebido_em=agora, observacoes=''))
+            locatario=empresa.pk, tipo='encomenda', destinatario='Maria', recebido_em=agora, observacoes=''))
         item = Correspondencia.objects.get()
         self.assertEqual(item.registrado_por, self.u[E])
         self.client.post(reverse('correspondencia_baixa', args=[item.pk]), dict(
@@ -247,9 +249,9 @@ class EquipeEPortariaTests(Base):
 class HomePorPerfilTests(Base):
     def test_cartoes_de_cada_perfil(self):
         esperado = {
-            S: {'Unidades', 'Locatários', 'Usuários e acessos', 'Contratos', 'Condomínio e rateio', 'Cobranças',
+            S: {'Unidades', 'Empresas', 'Usuários e acessos', 'Contratos', 'Condomínio e rateio', 'Cobranças',
                 'Chamados de manutenção', 'Correspondências', 'Mural de contatos', 'Relatórios'},
-            A: {'Unidades', 'Locatários', 'Contratos', 'Condomínio e rateio', 'Cobranças', 'Correspondências',
+            A: {'Unidades', 'Empresas', 'Contratos', 'Condomínio e rateio', 'Cobranças', 'Correspondências',
                 'Mural de contatos', 'Relatórios'},
             E: {'Chamados de manutenção', 'Correspondências', 'Mural de contatos'},
             C: {'Contratos', 'Cobranças', 'Mural de contatos', 'Relatórios'},

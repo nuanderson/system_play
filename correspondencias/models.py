@@ -8,7 +8,7 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
-from cadastros.models import Unidade
+from cadastros.models import Locatario, Unidade
 
 DIAS_ALERTA = 7  # correspondência parada há tantos dias ou mais ganha destaque
 
@@ -31,8 +31,15 @@ class Correspondencia(models.Model):
         RETIRADA = 'retirada', 'Retirada'
         DEVOLVIDA = 'devolvida', 'Devolvida ao remetente'
 
-    unidade = models.ForeignKey(Unidade, verbose_name='unidade', on_delete=models.PROTECT, related_name='correspondencias')
-    destinatario = models.CharField('destinatário', max_length=150, blank=True, help_text='Nome que está no envelope ou na etiqueta.')
+    locatario = models.ForeignKey(
+        Locatario, verbose_name='destinatário (empresa)', null=True, blank=True, on_delete=models.PROTECT,
+        related_name='correspondencias', help_text='Para qual empresa chegou.',
+    )
+    unidade = models.ForeignKey(
+        Unidade, verbose_name='unidade', null=True, blank=True, on_delete=models.PROTECT, related_name='correspondencias',
+        help_text='Preenchida sozinha quando a empresa ocupa uma só unidade.',
+    )
+    destinatario = models.CharField('aos cuidados de', max_length=150, blank=True, help_text='Nome que está no envelope, se houver.')
     tipo = models.CharField('tipo', max_length=12, choices=Tipo.choices, default=Tipo.ENCOMENDA)
     observacoes = models.CharField('observações', max_length=300, blank=True)
     foto = models.FileField('foto', upload_to=caminho_foto, blank=True)
@@ -52,11 +59,17 @@ class Correspondencia(models.Model):
         ordering = ['-recebido_em', '-id']
 
     def __str__(self):
-        return f'{self.numero} {self.get_tipo_display()} — {self.unidade}'
+        return f'{self.numero} {self.get_tipo_display()} — {self.destino}'
 
     @property
     def numero(self):
         return f'C{self.pk:04d}' if self.pk else 'C—'
+
+    @property
+    def destino(self):
+        if self.locatario_id:
+            return str(self.locatario)
+        return str(self.unidade) if self.unidade_id else '—'
 
     @property
     def aguardando(self):

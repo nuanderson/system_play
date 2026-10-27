@@ -24,22 +24,22 @@
       {% for v, n in tipos %}<option value="{{ v }}"{% if v == filtros.tipo %} selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
   <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Mês</label>
     <input type="month" name="mes" value="{{ filtros.mes }}" onchange="this.form.submit()"></div>
-  {% if unidades %}
-    <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Unidade</label>
-      <select name="unidade" onchange="this.form.submit()"><option value="">Todas</option>
-        {% for u in unidades %}<option value="{{ u.pk }}"{% if u.pk|stringformat:"s" == filtros.unidade %} selected{% endif %}>{{ u.nome }}</option>{% endfor %}</select></div>
+  {% if empresas %}
+    <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Empresa</label>
+      <select name="empresa" onchange="this.form.submit()"><option value="">Todas</option>
+        {% for e in empresas %}<option value="{{ e.pk }}"{% if e.pk|stringformat:"s" == filtros.empresa %} selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>
   {% endif %}
 </form>
 
 <div class="cartao">
   <div class="table-responsive">
     <table class="table table-uruz table-hover align-middle mb-0">
-      <thead><tr><th>Unidade</th><th>Locatário</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Valor</th><th>Situação</th>{% if pode.financeiro_preparar %}<th></th>{% endif %}</tr></thead>
+      <thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Valor</th><th>Situação</th>{% if pode.financeiro_preparar %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for c in cobrancas %}
           <tr>
-            <td>{{ c.unidade }}</td>
             <td>{{ c.locatario }}</td>
+            <td>{{ c.unidade }}</td>
             <td>{{ c.get_tipo_display }}</td>
             <td>{{ c.referencia|date:"m/Y" }}</td>
             <td>{{ c.vencimento|date:"d/m/Y" }}</td>

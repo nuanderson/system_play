@@ -76,7 +76,7 @@ class PaginaInicialTests(TestCase):
         self.assertEqual(dados['Cobranças'], 'R$ 120,00 em aberto')
         self.assertEqual(dados['Contratos'], '0 vigentes')
         self.assertEqual(dados['Condomínio e rateio'], 'Nenhum mês importado')
-        self.assertEqual(dados['Unidades'], '11 unidades · 0 com locatário')
+        self.assertEqual(dados['Unidades'], '11 unidades · 0 com empresa')
         self.assertEqual(dados['Chamados de manutenção'], '0 em aberto')
 
     def test_resumo_do_locatario_nao_vaza_dados_do_predio(self):

@@ -130,7 +130,7 @@ def resumo_mensal_cobrancas(meses=12):
 # ---- Chamados ---------------------------------------------------------------
 
 def chamados(de, ate):
-    lista = list(Chamado.objects.select_related('unidade', 'responsavel').filter(
+    lista = list(Chamado.objects.select_related('locatario', 'unidade', 'responsavel').filter(
         aberto_em__date__gte=de, aberto_em__date__lte=ate).order_by('-aberto_em'))
     por_status = {valor: sum(1 for c in lista if c.status == valor) for valor in Chamado.Status.values}
     por_categoria, por_prioridade, por_local = defaultdict(int), defaultdict(int), defaultdict(int)
@@ -138,7 +138,7 @@ def chamados(de, ate):
     for c in lista:
         por_categoria[c.get_categoria_display()] += 1
         por_prioridade[c.get_prioridade_display()] += 1
-        por_local[str(c.unidade) if c.unidade_id else 'Área comum'] += 1
+        por_local[str(c.locatario) if c.locatario_id else (str(c.unidade) if c.unidade_id else 'Área comum')] += 1
         if c.custo:
             custo_categoria[c.get_categoria_display()] += c.custo
     resolvidos = [c for c in lista if c.resolvido_em]
@@ -172,12 +172,12 @@ def contratos():
 # ---- Correspondências -------------------------------------------------------
 
 def correspondencias(de, ate):
-    lista = list(Correspondencia.objects.select_related('unidade').filter(
+    lista = list(Correspondencia.objects.select_related('locatario', 'unidade').filter(
         recebido_em__date__gte=de, recebido_em__date__lte=ate).order_by('-recebido_em'))
     por_tipo, por_unidade = defaultdict(int), defaultdict(int)
     for c in lista:
         por_tipo[c.get_tipo_display()] += 1
-        por_unidade[c.unidade.nome] += 1
+        por_unidade[c.destino] += 1
     retiradas = [c for c in lista if c.status == Correspondencia.Status.RETIRADA and c.retirada_em]
     dias = [(c.retirada_em - c.recebido_em).total_seconds() / 86400 for c in retiradas]
     ordenar = lambda d: sorted(d.items(), key=lambda item: item[1], reverse=True)
@@ -185,6 +185,6 @@ def correspondencias(de, ate):
         de=de, ate=ate, lista=lista, total=len(lista), retiradas=len(retiradas),
         devolvidas=sum(1 for c in lista if c.status == Correspondencia.Status.DEVOLVIDA),
         tempo_medio_dias=media(dias), por_tipo=ordenar(por_tipo), por_unidade=ordenar(por_unidade),
-        pendentes_agora=Correspondencia.pendentes().select_related('unidade').order_by('recebido_em'),
+        pendentes_agora=Correspondencia.pendentes().select_related('locatario', 'unidade').order_by('recebido_em'),
         dias_alerta=DIAS_ALERTA,
     )

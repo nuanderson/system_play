@@ -13,7 +13,7 @@
   <div class="titulo-cartao">Contratos vigentes (do que vence primeiro)</div>
   <div class="table-responsive">
     <table class="table table-uruz mb-0 align-middle">
-      <thead><tr><th>Unidade</th><th>Locatário</th><th>Início</th><th>Fim</th><th>Situação</th><th class="text-end">Aluguel</th><th>Reajuste</th></tr></thead>
+      <thead><tr><th>Unidade</th><th>Empresa</th><th>Início</th><th>Fim</th><th>Situação</th><th class="text-end">Aluguel</th><th>Reajuste</th></tr></thead>
       <tbody>
         {% for c in d.vigentes %}
           <tr><td>{{ c.unidade }}</td><td>{{ c.locatario }}</td><td>{{ c.data_inicio|date:"d/m/Y" }}</td><td>{{ c.data_fim|date:"d/m/Y"|default:"—" }}</td>

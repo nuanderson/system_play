@@ -78,7 +78,7 @@
             {% for e in form_comentario.texto.errors %}<div class="erro">{{ e }}</div>{% endfor %}
           </div>
           {% if form_comentario.interno %}
-            <div class="campo"><label style="font-weight:400">{{ form_comentario.interno }} Nota interna <span class="ajuda">(o locatário não vê)</span></label></div>
+            <div class="campo"><label style="font-weight:400">{{ form_comentario.interno }} Nota interna <span class="ajuda">(a empresa não vê)</span></label></div>
           {% endif %}
           <button type="submit">Comentar</button>
         </form>

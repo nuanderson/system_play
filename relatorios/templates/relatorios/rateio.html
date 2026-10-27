@@ -17,7 +17,7 @@
     <div class="titulo-cartao">Rateio de {{ d.competencia }}</div>
     <div class="table-responsive">
       <table class="table table-uruz mb-0 align-middle">
-        <thead><tr><th>Unidade</th><th>Locatário</th><th class="text-end">Área (m²)</th><th class="text-end">Energia</th><th class="text-end">Água</th><th class="text-end">Demais</th><th class="text-end">Total</th><th class="text-end">%</th></tr></thead>
+        <thead><tr><th>Unidade</th><th>Empresa</th><th class="text-end">Área (m²)</th><th class="text-end">Energia</th><th class="text-end">Água</th><th class="text-end">Demais</th><th class="text-end">Total</th><th class="text-end">%</th></tr></thead>
         <tbody>
           {% for l in d.linhas %}
             <tr><td>{{ l.item.unidade }}</td>

@@ -8,7 +8,7 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
-from cadastros.models import Unidade
+from cadastros.models import Locatario, Unidade
 
 
 class Chamado(models.Model):
@@ -38,9 +38,13 @@ class Chamado(models.Model):
 
     STATUS_EM_ABERTO = (Status.ABERTO, Status.ANDAMENTO, Status.AGUARDANDO)
 
+    locatario = models.ForeignKey(
+        Locatario, verbose_name='empresa', null=True, blank=True, on_delete=models.SET_NULL, related_name='chamados',
+        help_text='Em branco para áreas comuns do prédio.',
+    )
     unidade = models.ForeignKey(
         Unidade, verbose_name='unidade', null=True, blank=True, on_delete=models.SET_NULL, related_name='chamados',
-        help_text='Em branco para áreas comuns do prédio.',
+        help_text='Preenchida sozinha quando a empresa ocupa uma só unidade.',
     )
     local = models.CharField('local do problema', max_length=120, blank=True, help_text='Ex.: banheiro do 2º andar, portão da garagem.')
     solicitante = models.ForeignKey(
@@ -79,7 +83,13 @@ class Chamado(models.Model):
 
     @property
     def onde(self):
-        partes = [str(self.unidade) if self.unidade_id else 'Área comum', self.local]
+        if self.locatario_id:
+            quem = str(self.locatario)
+        elif self.unidade_id:
+            quem = str(self.unidade)
+        else:
+            quem = 'Área comum'
+        partes = [quem, self.local]
         return ' · '.join(p for p in partes if p)
 
     @property
@@ -102,7 +112,7 @@ class Comentario(models.Model):
     tipo = models.CharField(max_length=10, choices=Tipo.choices, default=Tipo.COMENTARIO)
     texto = models.TextField('comentário')
     interno = models.BooleanField(
-        'nota interna', default=False, help_text='Só a equipe e o síndico veem. O locatário não.',
+        'nota interna', default=False, help_text='Só a equipe e o síndico veem. A empresa não.',
     )
     criado_em = models.DateTimeField(auto_now_add=True)
 

@@ -16,7 +16,7 @@
 <div class="row g-3 mb-3">
   <div class="col-md-6"><div class="cartao h-100"><div class="titulo-cartao">Por tipo</div>
     {% for nome, qtd in d.por_tipo %}<div class="d-flex justify-content-between"><span>{{ nome }}</span><strong>{{ qtd }}</strong></div>{% empty %}<span class="suave">—</span>{% endfor %}</div></div>
-  <div class="col-md-6"><div class="cartao h-100"><div class="titulo-cartao">Por unidade</div>
+  <div class="col-md-6"><div class="cartao h-100"><div class="titulo-cartao">Por empresa</div>
     {% for nome, qtd in d.por_unidade %}<div class="d-flex justify-content-between"><span>{{ nome }}</span><strong>{{ qtd }}</strong></div>{% empty %}<span class="suave">—</span>{% endfor %}</div></div>
 </div>
 
@@ -24,10 +24,10 @@
   <div class="titulo-cartao">Aguardando retirada agora (independe do período)</div>
   <div class="table-responsive">
     <table class="table table-uruz mb-0 align-middle">
-      <thead><tr><th>Nº</th><th>Unidade</th><th>Tipo</th><th>Destinatário</th><th>Recebida em</th><th></th></tr></thead>
+      <thead><tr><th>Nº</th><th>Empresa</th><th>Tipo</th><th>Aos cuidados de</th><th>Recebida em</th><th></th></tr></thead>
       <tbody>
         {% for c in d.pendentes_agora %}
-          <tr><td class="suave">{{ c.numero }}</td><td>{{ c.unidade }}</td><td>{{ c.get_tipo_display }}</td><td>{{ c.destinatario|default:"—" }}</td>
+          <tr><td class="suave">{{ c.numero }}</td><td>{{ c.destino }}</td><td>{{ c.get_tipo_display }}</td><td>{{ c.destinatario|default:"—" }}</td>
             <td>{{ c.recebido_em|date:"d/m/Y H:i" }}</td>
             <td>{% if c.parada %}<span class="selo vencido">há {{ c.dias_aguardando }} dias</span>{% else %}<span class="suave">há {{ c.dias_aguardando }} d</span>{% endif %}</td></tr>
         {% empty %}<tr><td colspan="6" class="suave">Nada aguardando retirada.</td></tr>
@@ -41,10 +41,10 @@
   <div class="titulo-cartao">Recebimentos do período</div>
   <div class="table-responsive">
     <table class="table table-uruz mb-0 align-middle">
-      <thead><tr><th>Nº</th><th>Recebida em</th><th>Unidade</th><th>Tipo</th><th>Destinatário</th><th>Situação</th><th>Retirada por</th></tr></thead>
+      <thead><tr><th>Nº</th><th>Recebida em</th><th>Empresa</th><th>Tipo</th><th>Aos cuidados de</th><th>Situação</th><th>Retirada por</th></tr></thead>
       <tbody>
         {% for c in d.lista %}
-          <tr><td class="suave">{{ c.numero }}</td><td>{{ c.recebido_em|date:"d/m/Y H:i" }}</td><td>{{ c.unidade }}</td><td>{{ c.get_tipo_display }}</td>
+          <tr><td class="suave">{{ c.numero }}</td><td>{{ c.recebido_em|date:"d/m/Y H:i" }}</td><td>{{ c.destino }}</td><td>{{ c.get_tipo_display }}</td>
             <td>{{ c.destinatario|default:"—" }}</td><td><span class="selo co-{{ c.status }}">{{ c.get_status_display }}</span></td><td>{{ c.retirada_por|default:"—" }}</td></tr>
         {% empty %}<tr><td colspan="7" class="suave">Nenhuma correspondência no período.</td></tr>
         {% endfor %}

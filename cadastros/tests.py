@@ -51,12 +51,12 @@ class PermissoesTests(TestCase):
         self.client.force_login(self.locatario)
         resposta = self.client.get(reverse('inicio'))
         self.assertEqual(resposta.status_code, 200)
-        self.assertNotContains(resposta, 'Locatários</h3>')
+        self.assertNotContains(resposta, 'Empresas</h3>')
 
     def test_inicio_do_sindico_mostra_modulos_e_indicadores(self):
         self.client.force_login(self.sindico)
         resposta = self.client.get(reverse('inicio'))
         self.assertContains(resposta, 'Unidades</h3>')
         self.assertContains(resposta, 'Condomínio e rateio')
-        self.assertContains(resposta, '11 unidades · 0 com locatário')
+        self.assertContains(resposta, '11 unidades · 0 com empresa')
         self.assertContains(resposta, 'Tudo em dia')

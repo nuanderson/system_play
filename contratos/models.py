@@ -30,7 +30,7 @@ class Contrato(models.Model):
         NENHUM = 'nenhum', 'Sem reajuste'
 
     unidade = models.ForeignKey(Unidade, verbose_name='unidade', on_delete=models.PROTECT, related_name='contratos')
-    locatario = models.ForeignKey(Locatario, verbose_name='locatário', on_delete=models.PROTECT, related_name='contratos')
+    locatario = models.ForeignKey(Locatario, verbose_name='empresa', on_delete=models.PROTECT, related_name='contratos')
     status = models.CharField('situação', max_length=12, choices=Status.choices, default=Status.NEGOCIACAO)
     data_inicio = models.DateField('início', null=True, blank=True)
     data_fim = models.DateField('fim', null=True, blank=True)
@@ -86,7 +86,7 @@ class Contrato(models.Model):
                 ocupante = Unidade.objects.filter(pk=self.unidade_id).values_list('locatario__razao_social', 'locatario_id').first()
                 if ocupante and ocupante[1] and ocupante[1] != self.locatario_id:
                     erros['locatario'] = (f'Esta unidade está cadastrada para {ocupante[0]}. '
-                                          'Ajuste o cadastro dos locatários antes de criar este contrato.')
+                                          'Ajuste o cadastro das empresas antes de criar este contrato.')
         if erros:
             raise ValidationError(erros)
 
@@ -95,7 +95,7 @@ class Contrato(models.Model):
         self._sincronizar_unidade()
 
     def _sincronizar_unidade(self):
-        """Mantém o locatário da unidade em dia com o contrato vigente."""
+        """Mantém a empresa da unidade em dia com o contrato vigente."""
         unidade = self.unidade
         if self.status == self.Status.VIGENTE:
             if unidade.locatario_id != self.locatario_id:

@@ -19,7 +19,7 @@
     {% for nome, qtd in d.por_categoria %}<div class="d-flex justify-content-between"><span>{{ nome }}</span><strong>{{ qtd }}</strong></div>{% empty %}<span class="suave">—</span>{% endfor %}</div></div>
   <div class="col-md-6 col-lg-3"><div class="cartao h-100"><div class="titulo-cartao">Por prioridade</div>
     {% for nome, qtd in d.por_prioridade %}<div class="d-flex justify-content-between"><span>{{ nome }}</span><strong>{{ qtd }}</strong></div>{% empty %}<span class="suave">—</span>{% endfor %}</div></div>
-  <div class="col-md-6 col-lg-3"><div class="cartao h-100"><div class="titulo-cartao">Por unidade</div>
+  <div class="col-md-6 col-lg-3"><div class="cartao h-100"><div class="titulo-cartao">Por empresa</div>
     {% for nome, qtd in d.por_local %}<div class="d-flex justify-content-between"><span>{{ nome }}</span><strong>{{ qtd }}</strong></div>{% empty %}<span class="suave">—</span>{% endfor %}</div></div>
   <div class="col-md-6 col-lg-3"><div class="cartao h-100"><div class="titulo-cartao">Custo por categoria</div>
     {% for nome, valor in d.custo_categoria %}<div class="d-flex justify-content-between"><span>{{ nome }}</span><strong>R$ {{ valor|floatformat:"2g" }}</strong></div>{% empty %}<span class="suave">Sem custos lançados.</span>{% endfor %}</div></div>
@@ -29,7 +29,7 @@
   <div class="titulo-cartao">Chamados do período</div>
   <div class="table-responsive">
     <table class="table table-uruz mb-0 align-middle">
-      <thead><tr><th>Nº</th><th>Chamado</th><th>Onde</th><th>Prioridade</th><th>Situação</th><th>Aberto em</th><th class="text-end">Custo</th></tr></thead>
+      <thead><tr><th>Nº</th><th>Chamado</th><th>Empresa e local</th><th>Prioridade</th><th>Situação</th><th>Aberto em</th><th class="text-end">Custo</th></tr></thead>
       <tbody>
         {% for c in d.lista %}
           <tr><td class="suave">{{ c.numero }}</td>

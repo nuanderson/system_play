@@ -10,7 +10,8 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, ListView, UpdateView
 
-from cadastros.models import Unidade
+from cadastros.models import Locatario
+from core.escopo import q_escopo
 from core.permissions import PermissaoRequiredMixin
 
 from .forms import BaixaForm, CorrespondenciaForm, DevolucaoForm
@@ -18,11 +19,11 @@ from .models import Correspondencia
 
 
 def correspondencias_visiveis(usuario):
-    """Equipe e síndico veem tudo. Os demais veem só o que chegou para a própria unidade."""
+    """Quem cuida das correspondências vê tudo. Os demais veem só o que chegou para a própria empresa (ou unidade)."""
     if usuario.pode('correspondencias_gerenciar'):
         return Correspondencia.objects.all()
-    if usuario.unidades_ids():
-        return Correspondencia.objects.filter(unidade_id__in=usuario.unidades_ids())
+    if usuario.tem_escopo:
+        return Correspondencia.objects.filter(q_escopo(usuario))
     return Correspondencia.objects.none()
 
 
@@ -33,19 +34,20 @@ class CorrespondenciaLista(PermissaoRequiredMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
-        consulta = correspondencias_visiveis(self.request.user).select_related('unidade')
+        consulta = correspondencias_visiveis(self.request.user).select_related('locatario', 'unidade')
         situacao = self.request.GET.get('situacao', 'aguardando')
         if situacao in Correspondencia.Status.values:
             consulta = consulta.filter(status=situacao)
         tipo = self.request.GET.get('tipo', '')
         if tipo in Correspondencia.Tipo.values:
             consulta = consulta.filter(tipo=tipo)
-        unidade = self.request.GET.get('unidade', '')
-        if unidade.isdigit():
-            consulta = consulta.filter(unidade_id=int(unidade))
+        empresa = self.request.GET.get('empresa', '')
+        if empresa.isdigit():
+            consulta = consulta.filter(locatario_id=int(empresa))
         busca = self.request.GET.get('q', '').strip()
         if busca:
-            consulta = consulta.filter(Q(destinatario__icontains=busca) | Q(observacoes__icontains=busca))
+            consulta = consulta.filter(
+                Q(locatario__razao_social__icontains=busca) | Q(destinatario__icontains=busca) | Q(observacoes__icontains=busca))
         return consulta
 
     def get_context_data(self, **kwargs):
@@ -53,11 +55,11 @@ class CorrespondenciaLista(PermissaoRequiredMixin, ListView):
         contexto.update(
             filtros=dict(
                 situacao=self.request.GET.get('situacao', 'aguardando'), tipo=self.request.GET.get('tipo', ''),
-                unidade=self.request.GET.get('unidade', ''), q=self.request.GET.get('q', ''),
+                empresa=self.request.GET.get('empresa', ''), q=self.request.GET.get('q', ''),
             ),
             situacoes=[('todas', 'Todas')] + list(Correspondencia.Status.choices),
             tipos=Correspondencia.Tipo.choices,
-            unidades=Unidade.objects.all() if self.request.user.pode('correspondencias_gerenciar') else self.request.user.unidades() if len(self.request.user.unidades_ids()) > 1 else [],
+            empresas=Locatario.objects.filter(ativo=True) if self.request.user.pode('correspondencias_gerenciar') else [],
         )
         return contexto
 
@@ -73,7 +75,7 @@ class CorrespondenciaCriar(PermissaoRequiredMixin, CreateView):
         correspondencia = form.save(commit=False)
         correspondencia.registrado_por = self.request.user
         correspondencia.save()
-        messages.success(self.request, f'{correspondencia.numero} registrada para {correspondencia.unidade}.')
+        messages.success(self.request, f'{correspondencia.numero} registrada para {correspondencia.destino}.')
         if 'outra' in self.request.POST:
             return redirect('correspondencia_criar')
         return redirect('correspondencia_detalhe', pk=correspondencia.pk)
@@ -99,6 +101,7 @@ class CorrespondenciaEditar(PermissaoRequiredMixin, UpdateView):
 
 class CorrespondenciaDetalhe(PermissaoRequiredMixin, View):
     permissao = ('correspondencias_gerenciar', 'correspondencias_ver_proprias')
+
     def get(self, request, pk):
         item = get_object_or_404(correspondencias_visiveis(request.user), pk=pk)
         return self.renderizar(request, item)

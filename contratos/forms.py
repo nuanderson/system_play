@@ -12,7 +12,7 @@ class ContratoForm(forms.ModelForm):
     class Meta:
         model = Contrato
         fields = [
-            'unidade', 'locatario', 'status', 'data_inicio', 'data_fim',
+            'locatario', 'unidade', 'status', 'data_inicio', 'data_fim',
             'valor_aluguel', 'dia_vencimento', 'indice_reajuste', 'mes_reajuste',
             'pct_energia', 'pct_agua', 'observacoes',
         ]
@@ -21,6 +21,15 @@ class ContratoForm(forms.ModelForm):
             'data_fim': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'observacoes': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['locatario'].label = 'Empresa'
+        self.fields['locatario'].queryset = self.fields['locatario'].queryset.filter(ativo=True) | self.fields['locatario'].queryset.filter(
+            pk=self.instance.locatario_id)
+        # Quem cadastra o contrato sabe de quem é a unidade: mostra a empresa ao lado do nome.
+        self.fields['unidade'].queryset = self.fields['unidade'].queryset.select_related('locatario')
+        self.fields['unidade'].label_from_instance = lambda u: f'{u.nome} · {u.locatario}' if u.locatario_id else f'{u.nome} · livre'
 
 
 class DocumentoForm(forms.ModelForm):

@@ -121,7 +121,7 @@ class Rateio(Relatorio):
                        numero(base['rateio'].total_demais), numero(base['total']), '100,00'])
         return resposta_csv(
             f"rateio-{base['competencia'].referencia:%Y-%m}",
-            ['Unidade', 'Locatário', 'Área (m²)', 'Energia', 'Água', 'Demais', 'Total', '% do total'], linhas)
+            ['Unidade', 'Empresa', 'Área (m²)', 'Energia', 'Água', 'Demais', 'Total', '% do total'], linhas)
 
 
 class Inadimplencia(Relatorio):
@@ -136,7 +136,7 @@ class Inadimplencia(Relatorio):
              numero(c.valor), c.dias_atraso]
             for c in contexto['relatorio_dados']['atrasadas']
         ]
-        return resposta_csv('inadimplencia', ['Locatário', 'Unidade', 'Tipo', 'Referência', 'Vencimento', 'Valor', 'Dias de atraso'], linhas)
+        return resposta_csv('inadimplencia', ['Empresa', 'Unidade', 'Tipo', 'Referência', 'Vencimento', 'Valor', 'Dias de atraso'], linhas)
 
 
 class Chamados(Relatorio):
@@ -173,7 +173,7 @@ class Contratos(Relatorio):
             for c in contexto['relatorio_dados']['vigentes']
         ]
         return resposta_csv('contratos-vigentes', [
-            'Unidade', 'Locatário', 'Início', 'Fim', 'Dias para vencer', 'Aluguel', 'Dia do vencimento', 'Reajuste', 'Mês do reajuste',
+            'Unidade', 'Empresa', 'Início', 'Fim', 'Dias para vencer', 'Aluguel', 'Dia do vencimento', 'Reajuste', 'Mês do reajuste',
             '% energia', '% água'], linhas)
 
 
@@ -186,11 +186,11 @@ class Correspondencias(Relatorio):
 
     def csv(self, contexto):
         linhas = [
-            [c.numero, data_hora(c.recebido_em), texto(c.unidade), c.get_tipo_display(), texto(c.destinatario),
+            [c.numero, data_hora(c.recebido_em), texto(c.destino), c.get_tipo_display(), texto(c.destinatario),
              c.get_status_display(), data_hora(c.retirada_em), texto(c.retirada_por), texto(c.baixa_obs)]
             for c in contexto['relatorio_dados']['lista']
         ]
         return resposta_csv(
             f"correspondencias-{contexto['de']:%Y%m%d}-{contexto['ate']:%Y%m%d}",
-            ['Nº', 'Recebida em', 'Unidade', 'Tipo', 'Destinatário', 'Situação', 'Retirada ou devolvida em', 'Retirada por', 'Observação da baixa'],
+            ['Nº', 'Recebida em', 'Empresa', 'Tipo', 'Aos cuidados de', 'Situação', 'Retirada ou devolvida em', 'Retirada por', 'Observação da baixa'],
             linhas)

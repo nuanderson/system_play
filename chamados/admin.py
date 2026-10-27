@@ -16,7 +16,7 @@ class AnexoInline(admin.TabularInline):
 
 @admin.register(Chamado)
 class ChamadoAdmin(admin.ModelAdmin):
-    list_display = ('numero', 'titulo', 'unidade', 'categoria', 'prioridade', 'status', 'aberto_em')
+    list_display = ('numero', 'titulo', 'locatario', 'unidade', 'categoria', 'prioridade', 'status', 'aberto_em')
     list_filter = ('status', 'prioridade', 'categoria')
     search_fields = ('titulo', 'descricao')
     inlines = [ComentarioInline, AnexoInline]

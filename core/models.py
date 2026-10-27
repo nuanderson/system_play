@@ -19,8 +19,8 @@ class Usuario(AbstractUser):
         ADMINISTRATIVO = 'administrativo', 'Administrativo'
         EQUIPE = 'equipe', 'Equipe e portaria'
         CONSULTA = 'consulta', 'Consulta (só leitura)'
-        LOCATARIO = 'locatario', 'Responsável da unidade'
-        MEMBRO = 'membro', 'Membro da unidade'
+        LOCATARIO = 'locatario', 'Responsável da empresa'
+        MEMBRO = 'membro', 'Membro da empresa'
 
     PERFIS_DA_UNIDADE = (Perfil.LOCATARIO, Perfil.MEMBRO)
 
@@ -30,7 +30,7 @@ class Usuario(AbstractUser):
         on_delete=models.SET_NULL, related_name='usuarios',
     )
     locatario = models.ForeignKey(
-        'cadastros.Locatario', verbose_name='empresa (locatário)', null=True, blank=True,
+        'cadastros.Locatario', verbose_name='empresa', null=True, blank=True,
         on_delete=models.SET_NULL, related_name='usuarios',
         help_text='A empresa do usuário. Ele enxerga todas as unidades que ela ocupa.',
     )

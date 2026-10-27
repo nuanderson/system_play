@@ -14,26 +14,26 @@
   <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Tipo</label>
     <select name="tipo" onchange="this.form.submit()"><option value="">Todos</option>
       {% for v, n in tipos %}<option value="{{ v }}"{% if v == filtros.tipo %} selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
-  {% if unidades %}
-    <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Unidade</label>
-      <select name="unidade" onchange="this.form.submit()"><option value="">Todas</option>
-        {% for u in unidades %}<option value="{{ u.pk }}"{% if u.pk|stringformat:"s" == filtros.unidade %} selected{% endif %}>{{ u.nome }}</option>{% endfor %}</select></div>
+  {% if empresas %}
+    <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Empresa</label>
+      <select name="empresa" onchange="this.form.submit()"><option value="">Todas</option>
+        {% for e in empresas %}<option value="{{ e.pk }}"{% if e.pk|stringformat:"s" == filtros.empresa %} selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>
   {% endif %}
   <div class="filtro"><label class="suave" style="display:block;font-size:.8rem">Buscar</label>
-    <input type="search" name="q" value="{{ filtros.q }}" placeholder="destinatário ou observação"></div>
+    <input type="search" name="q" value="{{ filtros.q }}" placeholder="empresa, nome ou observação"></div>
   <button class="btn btn-acao" type="submit">Buscar</button>
 </form>
 
 <div class="cartao">
   <div class="table-responsive">
     <table class="table table-uruz table-hover align-middle mb-0">
-      <thead><tr><th>Nº</th><th>Tipo</th><th>Unidade</th><th>Destinatário</th><th>Recebida em</th><th>Situação</th><th></th></tr></thead>
+      <thead><tr><th>Nº</th><th>Tipo</th><th>Empresa</th><th>Aos cuidados de</th><th>Recebida em</th><th>Situação</th><th></th></tr></thead>
       <tbody>
         {% for c in itens %}
           <tr>
             <td class="suave">{{ c.numero }}</td>
             <td>{{ c.get_tipo_display }}</td>
-            <td>{{ c.unidade }}</td>
+            <td>{{ c.destino }}</td>
             <td style="white-space:normal; min-width:180px;">{{ c.destinatario|default:"—" }}{% if c.observacoes %}<div class="suave" style="font-size:.85rem">{{ c.observacoes }}</div>{% endif %}</td>
             <td>{{ c.recebido_em|date:"d/m/Y H:i" }}</td>
             <td>
@@ -52,9 +52,9 @@
 
 {% if is_paginated %}
   <div class="d-flex justify-content-between align-items-center mt-3">
-    <span>{% if page_obj.has_previous %}<a class="btn btn-sm btn-acao" href="?page={{ page_obj.previous_page_number }}&situacao={{ filtros.situacao }}&tipo={{ filtros.tipo }}&unidade={{ filtros.unidade }}&q={{ filtros.q|urlencode }}">← Anteriores</a>{% endif %}</span>
+    <span>{% if page_obj.has_previous %}<a class="btn btn-sm btn-acao" href="?page={{ page_obj.previous_page_number }}&situacao={{ filtros.situacao }}&tipo={{ filtros.tipo }}&empresa={{ filtros.empresa }}&q={{ filtros.q|urlencode }}">← Anteriores</a>{% endif %}</span>
     <span class="suave">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
-    <span>{% if page_obj.has_next %}<a class="btn btn-sm btn-acao" href="?page={{ page_obj.next_page_number }}&situacao={{ filtros.situacao }}&tipo={{ filtros.tipo }}&unidade={{ filtros.unidade }}&q={{ filtros.q|urlencode }}">Próximas →</a>{% endif %}</span>
+    <span>{% if page_obj.has_next %}<a class="btn btn-sm btn-acao" href="?page={{ page_obj.next_page_number }}&situacao={{ filtros.situacao }}&tipo={{ filtros.tipo }}&empresa={{ filtros.empresa }}&q={{ filtros.q|urlencode }}">Próximas →</a>{% endif %}</span>
   </div>
 {% endif %}
 {% endblock %}

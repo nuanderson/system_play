@@ -2,7 +2,7 @@ import os
 
 from django import forms
 
-from cadastros.models import Unidade
+from cadastros.models import Locatario
 from core.models import Usuario
 
 from .models import Anexo, Chamado, Comentario
@@ -45,24 +45,20 @@ class ChamadoForm(forms.ModelForm):
 
     class Meta:
         model = Chamado
-        fields = ['titulo', 'categoria', 'prioridade', 'unidade', 'local', 'descricao']
+        fields = ['titulo', 'categoria', 'prioridade', 'locatario', 'local', 'descricao']
         widgets = {'descricao': forms.Textarea(attrs={'rows': 5})}
 
     def __init__(self, *args, usuario, **kwargs):
         super().__init__(*args, **kwargs)
         self.usuario = usuario
         if usuario.pode('chamados_gerenciar'):
-            self.fields['unidade'].queryset = Unidade.objects.filter(ativa=True)
-            self.fields['unidade'].empty_label = 'Área comum do prédio'
+            # Quem abre pela equipe escolhe a empresa. Em branco, o chamado é de área comum do prédio.
+            self.fields['locatario'].queryset = Locatario.objects.filter(ativo=True)
+            self.fields['locatario'].label = 'Empresa'
+            self.fields['locatario'].empty_label = 'Área comum do prédio'
+            self.fields['locatario'].help_text = 'De qual empresa é o problema? Em branco para áreas comuns.'
         else:
-            unidades = usuario.unidades()
-            if unidades.count() > 1:
-                self.fields['unidade'].queryset = unidades
-                self.fields['unidade'].required = True
-                self.fields['unidade'].empty_label = 'Escolha a unidade'
-                self.fields['unidade'].help_text = 'Em qual unidade está o problema?'
-            else:
-                del self.fields['unidade']
+            del self.fields['locatario']
 
     def clean_fotos(self):
         fotos = self.cleaned_data.get('fotos') or []

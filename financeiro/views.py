@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView, UpdateView
 
-from cadastros.models import Unidade
+from cadastros.models import Locatario
 from core.permissions import PermissaoRequiredMixin
 
 from . import servicos
@@ -33,6 +33,7 @@ class CompetenciaLista(PermissaoRequiredMixin, ListView):
 
 class CompetenciaNova(PermissaoRequiredMixin, View):
     permissao = 'financeiro_preparar'
+
     def get(self, request):
         return render(request, 'financeiro/competencia_nova.html', {'form': CompetenciaNovaForm()})
 
@@ -170,9 +171,9 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
         mes = self.request.GET.get('mes', '')
         if len(mes) == 7 and mes[4] == '-' and mes[:4].isdigit() and mes[5:].isdigit():
             consulta = consulta.filter(referencia__year=int(mes[:4]), referencia__month=int(mes[5:]))
-        unidade = self.request.GET.get('unidade', '')
-        if unidade.isdigit():
-            consulta = consulta.filter(unidade_id=int(unidade))
+        empresa = self.request.GET.get('empresa', '')
+        if empresa.isdigit():
+            consulta = consulta.filter(locatario_id=int(empresa))
         return consulta
 
     def get_context_data(self, **kwargs):
@@ -185,17 +186,18 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
             total_atrasado=abertas.filter(vencimento__lt=hoje).aggregate(t=Sum('valor'))['t'] or Decimal('0'),
             filtros=dict(
                 situacao=self.request.GET.get('situacao', ''), tipo=self.request.GET.get('tipo', ''),
-                mes=self.request.GET.get('mes', ''), unidade=self.request.GET.get('unidade', ''),
+                mes=self.request.GET.get('mes', ''), empresa=self.request.GET.get('empresa', ''),
             ),
             situacoes=[('aberta', 'Em aberto'), ('atrasada', 'Atrasadas'), ('paga', 'Pagas'), ('cancelada', 'Canceladas')],
             tipos=Cobranca.Tipo.choices,
-            unidades=Unidade.objects.all() if self.request.user.pode('cobrancas_ver_todas') else self.request.user.unidades() if len(self.request.user.unidades_ids()) > 1 else [],
+            empresas=Locatario.objects.filter(ativo=True) if self.request.user.pode('cobrancas_ver_todas') else [],
         )
         return contexto
 
 
 class AluguelGerar(PermissaoRequiredMixin, View):
     permissao = 'financeiro_preparar'
+
     def get(self, request):
         form = AluguelGerarForm(initial={'mes': timezone.localdate().strftime('%Y-%m')})
         return render(request, 'financeiro/aluguel_gerar.html', {'form': form})

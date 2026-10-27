@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from cadastros.models import Unidade
+from cadastros.models import Locatario, Unidade
 from core.models import Usuario
 
 from .models import DIAS_ALERTA, Correspondencia
@@ -32,6 +32,8 @@ class Base(TestCase):
     def setUp(self):
         self.sala1 = Unidade.objects.get(nome='Sala 01')
         self.sala2 = Unidade.objects.get(nome='Sala 02')
+        self.empresa = Locatario.objects.create(razao_social='Empresa A')
+        Unidade.objects.filter(pk=self.sala1.pk).update(locatario=self.empresa)
         self.sindico = Usuario.objects.create_user('sindico', password='x', perfil=Usuario.Perfil.SINDICO)
         self.equipe = Usuario.objects.create_user('equipe', password='x', perfil=Usuario.Perfil.EQUIPE)
         self.administrativo = Usuario.objects.create_user('administrativo', password='x', perfil=Usuario.Perfil.ADMINISTRATIVO)
@@ -46,7 +48,7 @@ class Base(TestCase):
         return Correspondencia.objects.create(**dados)
 
     def dados_form(self, **extra):
-        dados = dict(unidade=self.sala1.pk, tipo='encomenda', destinatario='Maria',
+        dados = dict(locatario=self.empresa.pk, tipo='encomenda', destinatario='Maria',
                      recebido_em=agora_formatado(-timedelta(minutes=5)), observacoes='')
         dados.update(extra)
         return dados

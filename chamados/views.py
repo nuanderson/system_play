@@ -9,7 +9,8 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, ListView
 
-from cadastros.models import Unidade
+from cadastros.models import Locatario
+from core.escopo import empresa_do_usuario, q_escopo, unidade_unica
 from core.permissions import PermissaoRequiredMixin
 
 from .forms import AnexoForm, ChamadoForm, ComentarioForm, GerenciarForm
@@ -17,11 +18,11 @@ from .models import Anexo, Chamado, Comentario, registrar
 
 
 def chamados_visiveis(usuario):
-    """Equipe e síndico veem todos. Os demais veem os chamados da própria unidade."""
+    """Equipe e síndico veem todos. Os demais veem os chamados da própria empresa (ou unidade)."""
     if usuario.pode('chamados_gerenciar'):
         return Chamado.objects.all()
-    if usuario.unidades_ids():
-        return Chamado.objects.filter(unidade_id__in=usuario.unidades_ids())
+    if usuario.tem_escopo:
+        return Chamado.objects.filter(q_escopo(usuario))
     return Chamado.objects.none()
 
 
@@ -36,7 +37,7 @@ class ChamadoLista(PermissaoRequiredMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
-        consulta = chamados_visiveis(self.request.user).select_related('unidade', 'responsavel', 'solicitante')
+        consulta = chamados_visiveis(self.request.user).select_related('locatario', 'unidade', 'responsavel', 'solicitante')
         situacao = self.request.GET.get('situacao', 'abertos')
         if situacao == 'abertos':
             consulta = consulta.filter(status__in=Chamado.STATUS_EM_ABERTO)
@@ -48,9 +49,9 @@ class ChamadoLista(PermissaoRequiredMixin, ListView):
         categoria = self.request.GET.get('categoria', '')
         if categoria in Chamado.Categoria.values:
             consulta = consulta.filter(categoria=categoria)
-        unidade = self.request.GET.get('unidade', '')
-        if unidade.isdigit():
-            consulta = consulta.filter(unidade_id=int(unidade))
+        empresa = self.request.GET.get('empresa', '')
+        if empresa.isdigit():
+            consulta = consulta.filter(locatario_id=int(empresa))
         return consulta.order_by('-prioridade', '-aberto_em') if situacao == 'abertos' else consulta
 
     def get_context_data(self, **kwargs):
@@ -61,13 +62,13 @@ class ChamadoLista(PermissaoRequiredMixin, ListView):
                 situacao=self.request.GET.get('situacao', 'abertos'),
                 prioridade=self.request.GET.get('prioridade', ''),
                 categoria=self.request.GET.get('categoria', ''),
-                unidade=self.request.GET.get('unidade', ''),
+                empresa=self.request.GET.get('empresa', ''),
             ),
             situacoes=[('abertos', 'Em aberto'), ('todos', 'Todos')] + list(Chamado.Status.choices),
             prioridades=Chamado.Prioridade.choices,
             categorias=Chamado.Categoria.choices,
-            unidades=Unidade.objects.all() if usuario.pode('chamados_gerenciar') else (usuario.unidades() if len(usuario.unidades_ids()) > 1 else []),
-            pode_abrir=usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and bool(usuario.unidades_ids())),
+            empresas=Locatario.objects.filter(ativo=True) if usuario.pode('chamados_gerenciar') else [],
+            pode_abrir=usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and usuario.tem_escopo),
         )
         return contexto
 
@@ -81,7 +82,7 @@ class ChamadoCriar(PermissaoRequiredMixin, CreateView):
 
     def dispatch(self, request, *args, **kwargs):
         usuario = request.user
-        if usuario.is_authenticated and not (usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and usuario.unidades_ids())):
+        if usuario.is_authenticated and not (usuario.pode('chamados_gerenciar') or (usuario.pode('chamados_ver') and usuario.tem_escopo)):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
@@ -94,8 +95,15 @@ class ChamadoCriar(PermissaoRequiredMixin, CreateView):
         usuario = self.request.user
         chamado = form.save(commit=False)
         chamado.solicitante = usuario
-        if not usuario.pode('chamados_gerenciar') and 'unidade' not in form.fields:
-            chamado.unidade = usuario.unidades().first()
+        if usuario.pode('chamados_gerenciar'):
+            empresa = chamado.locatario
+        else:
+            empresa = chamado.locatario = empresa_do_usuario(usuario)
+        # Pessoa limitada a uma unidade abre na unidade dela; senão, a unidade só é preenchida quando a empresa tem uma só.
+        if usuario.unidade_id and not usuario.pode('chamados_gerenciar'):
+            chamado.unidade = usuario.unidade
+        else:
+            chamado.unidade = unidade_unica(empresa)
         chamado.save()
         for arquivo in form.cleaned_data['fotos']:
             Anexo.objects.create(
@@ -108,6 +116,7 @@ class ChamadoCriar(PermissaoRequiredMixin, CreateView):
 
 class ChamadoDetalhe(PermissaoRequiredMixin, View):
     permissao = 'chamados_ver'
+
     def get(self, request, pk):
         chamado = get_object_or_404(chamados_visiveis(request.user), pk=pk)
         return self.renderizar(request, chamado)

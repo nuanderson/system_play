@@ -3,9 +3,11 @@ from datetime import timedelta
 
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
+from django.db.models import Q
 from django.utils import timezone
 
-from cadastros.models import Unidade
+from cadastros.models import Locatario
+from core.escopo import unidade_unica
 
 from .models import Correspondencia
 
@@ -27,14 +29,29 @@ class CorrespondenciaForm(forms.ModelForm):
 
     class Meta:
         model = Correspondencia
-        fields = ['unidade', 'tipo', 'destinatario', 'recebido_em', 'foto', 'observacoes']
+        fields = ['locatario', 'destinatario', 'tipo', 'recebido_em', 'foto', 'observacoes']
         widgets = {'foto': forms.FileInput(attrs={'accept': 'image/*'})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['unidade'].queryset = Unidade.objects.filter(ativa=True)
+        empresas = Q(ativo=True)
+        if self.instance.pk and self.instance.locatario_id:
+            empresas |= Q(pk=self.instance.locatario_id)
+        self.fields['locatario'].queryset = Locatario.objects.filter(empresas)
+        self.fields['locatario'].required = True
+        self.fields['locatario'].label = 'Destinatário (empresa)'
+        self.fields['locatario'].empty_label = 'Escolha a empresa'
+        self.fields['locatario'].help_text = 'Todas as empresas cadastradas. A unidade o sistema descobre sozinho.'
+        self.fields['destinatario'].label = 'Aos cuidados de (opcional)'
         if not self.is_bound and not self.instance.pk:
             self.initial['recebido_em'] = timezone.localtime().replace(second=0, microsecond=0)
+
+    def save(self, commit=True):
+        instancia = super().save(commit=False)
+        instancia.unidade = unidade_unica(instancia.locatario)  # só quando a empresa ocupa uma unidade
+        if commit:
+            instancia.save()
+        return instancia
 
     def clean_foto(self):
         foto = self.cleaned_data.get('foto')

@@ -10,10 +10,10 @@
 <div class="row g-3 mb-3">
   <div class="col-lg-7">
     <div class="cartao h-100">
-      <div class="titulo-cartao">Por locatário</div>
+      <div class="titulo-cartao">Por empresa</div>
       <div class="table-responsive">
         <table class="table table-uruz mb-0 align-middle">
-          <thead><tr><th>Locatário</th><th>Unidades</th><th class="text-end">Cobranças</th><th class="text-end">Maior atraso</th><th class="text-end">Valor</th></tr></thead>
+          <thead><tr><th>Empresa</th><th>Unidades</th><th class="text-end">Cobranças</th><th class="text-end">Maior atraso</th><th class="text-end">Valor</th></tr></thead>
           <tbody>
             {% for x in d.devedores %}
               <tr><td>{{ x.locatario }}</td><td>{{ x.unidades }}</td><td class="text-end">{{ x.quantidade }}</td><td class="text-end">{{ x.maior_atraso }} d</td><td class="text-end"><strong>R$ {{ x.total|floatformat:"2g" }}</strong></td></tr>
@@ -43,7 +43,7 @@
   <div class="titulo-cartao">Cobranças em atraso</div>
   <div class="table-responsive">
     <table class="table table-uruz mb-0 align-middle">
-      <thead><tr><th>Locatário</th><th>Unidade</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Atraso</th><th class="text-end">Valor</th></tr></thead>
+      <thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Atraso</th><th class="text-end">Valor</th></tr></thead>
       <tbody>
         {% for c in d.atrasadas %}
           <tr><td>{{ c.locatario }}</td><td>{{ c.unidade }}</td><td>{{ c.get_tipo_display }}</td><td>{{ c.referencia|date:"m/Y" }}</td>
