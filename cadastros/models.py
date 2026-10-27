@@ -10,6 +10,11 @@ class Locatario(models.Model):
     email_cobranca = models.EmailField('e-mail de cobrança', blank=True)
     telefone = models.CharField('telefone', max_length=30, blank=True)
     ativo = models.BooleanField('ativo', default=True)
+    cobranca_unificada = models.BooleanField(
+        'unificar a cobrança das unidades', default=True,
+        help_text='Com mais de uma unidade, gera uma cobrança só de aluguel e uma só de condomínio por mês, '
+                  'somando as unidades. Desmarque para cobrar cada unidade separadamente.',
+    )
 
     class Meta:
         verbose_name = 'empresa'

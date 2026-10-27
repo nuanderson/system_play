@@ -78,6 +78,7 @@ class VarreduraTests(TestCase):
         self.argumentos = {
             'contrato_detalhe': self.contrato.pk, 'contrato_editar': self.contrato.pk,
             'competencia_detalhe': self.comp.pk, 'cobranca_editar': self.cobranca.pk, 'cobranca_pagar': self.cobranca.pk,
+            'cobranca_detalhe': self.cobranca.pk, 'boleto_baixar': self.cobranca.pk,
             'chamado_detalhe': self.chamado.pk, 'correspondencia_detalhe': self.correspondencia.pk,
             'correspondencia_editar': self.correspondencia.pk, 'locatario_editar': self.clinica.pk,
             'unidade_editar': self.sala1.pk, 'usuario_editar': self.usuarios['locatario'].pk,

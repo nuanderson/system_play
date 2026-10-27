@@ -11,8 +11,8 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from core.permissions import PermissaoRequiredMixin
 
-from .forms import ContratoForm, DocumentoForm
-from .models import Contrato, DocumentoContrato
+from .forms import AjusteForm, ContratoForm, DocumentoForm
+from .models import AjusteContrato, Contrato, DocumentoContrato
 
 
 def contratos_visiveis(usuario):
@@ -60,8 +60,10 @@ class ContratoDetalhe(ContratoVisivelMixin, DetailView):
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         contexto['documentos'] = self.object.documentos.all()
+        contexto['ajustes'] = self.object.ajustes.all()
         if self.request.user.pode('contratos_editar'):
             contexto['form_documento'] = DocumentoForm()
+            contexto['form_ajuste'] = AjusteForm()
         return contexto
 
 
@@ -112,6 +114,33 @@ class DocumentoEnviar(PermissaoRequiredMixin, View):
                 for erro in erros:
                     messages.error(request, erro)
         return redirect('contrato_detalhe', pk=contrato.pk)
+
+
+class AjusteCriar(PermissaoRequiredMixin, View):
+    permissao = 'contratos_editar'
+
+    def post(self, request, pk):
+        contrato = get_object_or_404(Contrato, pk=pk)
+        form = AjusteForm(request.POST, instance=AjusteContrato(contrato=contrato))
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Valor adicional registrado. Vale a partir das próximas cobranças geradas.')
+        else:
+            for erros in form.errors.values():
+                for erro in erros:
+                    messages.error(request, erro)
+        return redirect('contrato_detalhe', pk=contrato.pk)
+
+
+class AjusteExcluir(PermissaoRequiredMixin, View):
+    permissao = 'contratos_editar'
+
+    def post(self, request, pk):
+        ajuste = get_object_or_404(AjusteContrato, pk=pk)
+        contrato_pk = ajuste.contrato_id
+        ajuste.delete()
+        messages.success(request, 'Valor adicional removido.')
+        return redirect('contrato_detalhe', pk=contrato_pk)
 
 
 class DocumentoBaixar(LoginRequiredMixin, View):

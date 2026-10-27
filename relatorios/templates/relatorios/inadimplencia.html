@@ -46,7 +46,7 @@
       <thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Atraso</th><th class="text-end">Valor</th></tr></thead>
       <tbody>
         {% for c in d.atrasadas %}
-          <tr><td>{{ c.locatario }}</td><td>{{ c.unidade }}</td><td>{{ c.get_tipo_display }}</td><td>{{ c.referencia|date:"m/Y" }}</td>
+          <tr><td>{{ c.locatario }}</td><td>{{ c.origem }}</td><td>{{ c.get_tipo_display }}</td><td>{{ c.referencia|date:"m/Y" }}</td>
             <td>{{ c.vencimento|date:"d/m/Y" }}</td><td class="text-end">{{ c.dias_atraso }} d</td><td class="text-end">R$ {{ c.valor|floatformat:"2g" }}</td></tr>
         {% empty %}<tr><td colspan="7" class="suave">Nenhuma cobrança em atraso.</td></tr>
         {% endfor %}

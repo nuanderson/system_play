@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import date
 from decimal import Decimal
@@ -6,6 +7,8 @@ from django import forms
 from django.utils import timezone
 
 from .models import Cobranca, Despesa
+
+EXTENSOES_BOLETO = {'.pdf', '.jpg', '.jpeg', '.png'}
 
 
 class MesField(forms.CharField):
@@ -49,6 +52,26 @@ class DespesaMarcacaoForm(forms.ModelForm):
         if not dados.get('entra_no_rateio') and not dados.get('motivo_exclusao'):
             self.add_error('motivo_exclusao', 'Diga o motivo.')
         return dados
+
+
+class BoletoForm(forms.Form):
+    arquivo = forms.FileField(label='Boleto (PDF ou imagem)')
+
+    def clean_arquivo(self):
+        arquivo = self.cleaned_data['arquivo']
+        if os.path.splitext(arquivo.name)[1].lower() not in EXTENSOES_BOLETO:
+            raise forms.ValidationError('Tipo de arquivo não permitido. Use PDF, JPG ou PNG.')
+        if arquivo.size > 10 * 1024 * 1024:
+            raise forms.ValidationError('O arquivo passa de 10 MB.')
+        return arquivo
+
+
+class EnviarCobrancaForm(forms.Form):
+    para = forms.EmailField(label='Enviar para')
+    mensagem = forms.CharField(label='Recado (opcional)', required=False, max_length=500,
+                               widget=forms.Textarea(attrs={'rows': 2}))
+    anexar_boleto = forms.BooleanField(label='Anexar o boleto', required=False, initial=True)
+    anexar_fatura = forms.BooleanField(label='Anexar a fatura do condomínio (PDF)', required=False, initial=True)
 
 
 class AluguelGerarForm(forms.Form):

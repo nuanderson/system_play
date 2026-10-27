@@ -34,12 +34,12 @@
 <div class="cartao">
   <div class="table-responsive">
     <table class="table table-uruz table-hover align-middle mb-0">
-      <thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Valor</th><th>Situação</th>{% if pode.financeiro_preparar %}<th></th>{% endif %}</tr></thead>
+      <thead><tr><th>Empresa</th><th>Unidade</th><th>Tipo</th><th>Ref.</th><th>Vencimento</th><th class="text-end">Valor</th><th>Situação</th><th>Boleto</th>{% if pode.financeiro_preparar %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for c in cobrancas %}
           <tr>
             <td>{{ c.locatario }}</td>
-            <td>{{ c.unidade }}</td>
+            <td><a href="{% url 'cobranca_detalhe' c.pk %}">{{ c.origem }}</a></td>
             <td>{{ c.get_tipo_display }}</td>
             <td>{{ c.referencia|date:"m/Y" }}</td>
             <td>{{ c.vencimento|date:"d/m/Y" }}</td>
@@ -49,6 +49,11 @@
               {% elif c.status == 'cancelada' %}<span class="selo encerrado">Cancelada</span>
               {% elif c.atrasada %}<span class="selo vencido">Atrasada {{ c.dias_atraso }} d</span>
               {% else %}<span class="selo negociacao">Em aberto</span>{% endif %}
+            </td>
+            <td>
+              {% if c.boleto %}<a class="btn btn-sm btn-acao" href="{% url 'boleto_baixar' c.pk %}">Baixar</a>
+              {% elif pode.financeiro_preparar and c.status != 'cancelada' %}<a class="btn btn-sm btn-acao" href="{% url 'cobranca_detalhe' c.pk %}#boleto">Anexar</a>
+              {% else %}<span class="suave">—</span>{% endif %}
             </td>
             {% if pode.financeiro_preparar %}
               <td class="text-end">
@@ -65,7 +70,7 @@
             {% endif %}
           </tr>
         {% empty %}
-          <tr><td colspan="8" class="suave">Nenhuma cobrança encontrada.</td></tr>
+          <tr><td colspan="9" class="suave">Nenhuma cobrança encontrada.</td></tr>
         {% endfor %}
       </tbody>
     </table>

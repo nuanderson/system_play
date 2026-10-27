@@ -86,13 +86,15 @@ def rateio(competencia):
 # ---- Inadimplência e cobranças ----------------------------------------------
 
 def inadimplencia():
-    atrasadas = list(Cobranca.atrasadas().select_related('unidade', 'locatario').order_by('vencimento'))
+    atrasadas = list(Cobranca.atrasadas().select_related('unidade', 'locatario')
+                     .prefetch_related('itens__unidade').order_by('vencimento'))
     por_locatario = {}
     faixas = {nome: dict(total=ZERO, quantidade=0) for _, nome in FAIXAS_ATRASO}
     for c in atrasadas:
         dados = por_locatario.setdefault(c.locatario_id, dict(
             locatario=c.locatario, unidades=set(), total=ZERO, quantidade=0, maior_atraso=0))
-        dados['unidades'].add(c.unidade.nome)
+        dados['unidades'].update([c.unidade.nome] if c.unidade_id else
+                                 {i.unidade.nome for i in c.itens.all()})
         dados['total'] += c.valor
         dados['quantidade'] += 1
         dados['maior_atraso'] = max(dados['maior_atraso'], c.dias_atraso)

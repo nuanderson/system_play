@@ -42,8 +42,8 @@ def alertas(usuario):
 
     if usuario.pode('cobrancas_ver_todas'):
         cobrancas_atrasadas(Cobranca.atrasadas())
-    elif usuario.pode('cobrancas_ver_proprias') and usuario.unidades_ids():
-        cobrancas_atrasadas(Cobranca.atrasadas().filter(unidade_id__in=usuario.unidades_ids()))
+    elif usuario.pode('cobrancas_ver_proprias') and usuario.tem_escopo:
+        cobrancas_atrasadas(Cobranca.atrasadas().filter(q_escopo(usuario)))
 
     if usuario.pode('contratos_ver_todos'):
         vencidos = Contrato.vigentes().filter(data_fim__lt=timezone.localdate()).count()
@@ -97,7 +97,7 @@ def resumos(usuario):
     if usuario.pode('cobrancas_ver_todas'):
         dados['Cobranças'] = f'{reais(Cobranca.em_aberto().aggregate(t=Sum("valor"))["t"])} em aberto'
     elif usuario.pode('cobrancas_ver_proprias'):
-        aberto = Cobranca.em_aberto().filter(unidade_id__in=usuario.unidades_ids()).aggregate(t=Sum('valor'))['t']
+        aberto = Cobranca.em_aberto().filter(q_escopo(usuario)).aggregate(t=Sum('valor'))['t']
         dados['Cobranças'] = f'{reais(aberto)} em aberto'
 
     if usuario.pode('chamados_ver'):

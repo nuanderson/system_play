@@ -2,7 +2,7 @@ import os
 
 from django import forms
 
-from .models import Contrato, DocumentoContrato
+from .models import AjusteContrato, Contrato, DocumentoContrato
 
 EXTENSOES_PERMITIDAS = {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'}
 TAMANHO_MAXIMO = 10 * 1024 * 1024  # 10 MB
@@ -30,6 +30,16 @@ class ContratoForm(forms.ModelForm):
         # Quem cadastra o contrato sabe de quem é a unidade: mostra a empresa ao lado do nome.
         self.fields['unidade'].queryset = self.fields['unidade'].queryset.select_related('locatario')
         self.fields['unidade'].label_from_instance = lambda u: f'{u.nome} · {u.locatario}' if u.locatario_id else f'{u.nome} · livre'
+
+
+class AjusteForm(forms.ModelForm):
+    class Meta:
+        model = AjusteContrato
+        fields = ['descricao', 'natureza', 'forma', 'valor', 'aplica_em', 'inicio', 'fim']
+        widgets = {
+            'inicio': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'fim': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+        }
 
 
 class DocumentoForm(forms.ModelForm):

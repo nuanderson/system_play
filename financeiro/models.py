@@ -1,12 +1,21 @@
 import calendar
+import os
+import uuid
 from datetime import date
 
 from django.conf import settings
 from django.db import models
 from django.db.models import Q, Sum
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from django.utils import timezone
 
 from cadastros.models import Locatario, Unidade
+
+
+def caminho_boleto(instancia, nome_arquivo):
+    extensao = os.path.splitext(nome_arquivo)[1].lower()
+    return f'boletos/{instancia.locatario_id}/{uuid.uuid4().hex}{extensao}'
 
 
 def data_no_mes(ano, mes, dia):
@@ -145,7 +154,10 @@ class Cobranca(models.Model):
         PAGA = 'paga', 'Paga'
         CANCELADA = 'cancelada', 'Cancelada'
 
-    unidade = models.ForeignKey(Unidade, on_delete=models.PROTECT, related_name='cobrancas')
+    unidade = models.ForeignKey(
+        Unidade, null=True, blank=True, on_delete=models.PROTECT, related_name='cobrancas',
+        help_text='Em branco quando a cobrança soma várias unidades da empresa (veja os itens).',
+    )
     locatario = models.ForeignKey(Locatario, on_delete=models.PROTECT, related_name='cobrancas')
     tipo = models.CharField('tipo', max_length=12, choices=Tipo.choices)
     referencia = models.DateField('mês de referência')
@@ -156,22 +168,43 @@ class Cobranca(models.Model):
     valor_pago = models.DecimalField('valor pago (R$)', max_digits=12, decimal_places=2, null=True, blank=True)
     rateio = models.ForeignKey(Rateio, null=True, blank=True, on_delete=models.SET_NULL, related_name='cobrancas')
     observacao = models.CharField('observação', max_length=300, blank=True)
+    boleto = models.FileField('boleto', upload_to=caminho_boleto, blank=True)
+    boleto_nome = models.CharField(max_length=255, blank=True)
+    boleto_enviado_em = models.DateTimeField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = 'cobrança'
         verbose_name_plural = 'cobranças'
-        ordering = ['-vencimento', 'unidade__ordem']
+        ordering = ['-vencimento', 'unidade__ordem', 'locatario__razao_social']
         constraints = [
             models.UniqueConstraint(
                 fields=['unidade', 'tipo', 'referencia'],
                 condition=~Q(status='cancelada'),
                 name='uma_cobranca_ativa_por_unidade_tipo_mes',
             ),
+            models.UniqueConstraint(
+                fields=['locatario', 'tipo', 'referencia'],
+                condition=~Q(status='cancelada') & Q(unidade__isnull=True),
+                name='uma_cobranca_unificada_ativa_por_empresa_tipo_mes',
+            ),
         ]
 
     def __str__(self):
-        return f'{self.get_tipo_display()} {self.referencia:%m/%Y} — {self.unidade}'
+        return f'{self.get_tipo_display()} {self.referencia:%m/%Y} — {self.origem}'
+
+    @property
+    def fatura_disponivel(self):
+        """Só o condomínio que veio de um rateio tem fatura (com os gastos do mês)."""
+        return self.tipo == self.Tipo.CONDOMINIO and self.rateio_id is not None
+
+    @property
+    def origem(self):
+        """A unidade da cobrança, ou a lista de unidades quando ela soma várias."""
+        if self.unidade_id:
+            return str(self.unidade)
+        nomes = sorted({i.unidade.nome for i in self.itens.all() if i.unidade_id})
+        return ', '.join(nomes) if nomes else 'várias unidades'
 
     @property
     def atrasada(self):
@@ -188,3 +221,42 @@ class Cobranca(models.Model):
     @classmethod
     def atrasadas(cls):
         return cls.em_aberto().filter(vencimento__lt=timezone.localdate())
+
+
+class CobrancaItem(models.Model):
+    """Uma linha da cobrança: o valor de uma unidade, ou um acréscimo/desconto do contrato (valor negativo)."""
+
+    cobranca = models.ForeignKey(Cobranca, on_delete=models.CASCADE, related_name='itens')
+    unidade = models.ForeignKey(Unidade, on_delete=models.PROTECT, related_name='+')
+    descricao = models.CharField('descrição', max_length=200)
+    valor = models.DecimalField('valor (R$)', max_digits=12, decimal_places=2)
+
+    class Meta:
+        ordering = ['unidade__ordem', 'id']
+
+    def __str__(self):
+        return f'{self.unidade} — {self.descricao}'
+
+
+class EnvioCobranca(models.Model):
+    """Registro de cada e-mail de cobrança disparado pelo sistema, com o resultado."""
+
+    cobranca = models.ForeignKey(Cobranca, on_delete=models.CASCADE, related_name='envios')
+    para = models.EmailField('enviado para')
+    com_boleto = models.BooleanField('com boleto', default=False)
+    com_fatura = models.BooleanField('com fatura', default=False)
+    enviado_em = models.DateTimeField(auto_now_add=True)
+    enviado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+    )
+    ok = models.BooleanField('entregue ao servidor de e-mail', default=True)
+    erro = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        ordering = ['-enviado_em']
+
+
+@receiver(post_delete, sender=Cobranca)
+def apagar_boleto(sender, instance, **kwargs):
+    if instance.boleto:
+        instance.boleto.delete(save=False)

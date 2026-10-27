@@ -1,6 +1,7 @@
 import os
 import uuid
 from datetime import timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -133,6 +134,66 @@ class Contrato(models.Model):
     def a_vencer(cls):
         limite = timezone.localdate() + timedelta(days=DIAS_ALERTA_VENCIMENTO)
         return cls.vigentes().filter(data_fim__isnull=False, data_fim__lte=limite)
+
+
+class AjusteContrato(models.Model):
+    """Valor a mais ou desconto que entra nas cobranças do contrato (fixo em R$ ou em %)."""
+
+    class Natureza(models.TextChoices):
+        ACRESCIMO = 'acrescimo', 'Acréscimo'
+        DESCONTO = 'desconto', 'Desconto'
+
+    class Forma(models.TextChoices):
+        VALOR = 'valor', 'R$ fixo'
+        PERCENTUAL = 'percentual', '% do valor'
+
+    class AplicaEm(models.TextChoices):
+        ALUGUEL = 'aluguel', 'Aluguel'
+        CONDOMINIO = 'condominio', 'Condomínio'
+
+    contrato = models.ForeignKey(Contrato, on_delete=models.CASCADE, related_name='ajustes')
+    descricao = models.CharField('descrição', max_length=120)
+    natureza = models.CharField('tipo', max_length=10, choices=Natureza.choices, default=Natureza.DESCONTO)
+    forma = models.CharField('forma', max_length=10, choices=Forma.choices, default=Forma.VALOR)
+    valor = models.DecimalField('valor', max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    aplica_em = models.CharField('aplica em', max_length=12, choices=AplicaEm.choices, default=AplicaEm.ALUGUEL)
+    inicio = models.DateField('a partir de', null=True, blank=True, help_text='Em branco = desde o início do contrato.')
+    fim = models.DateField('até', null=True, blank=True, help_text='Em branco = sem data para acabar.')
+
+    class Meta:
+        verbose_name = 'ajuste do contrato'
+        verbose_name_plural = 'ajustes do contrato'
+        ordering = ['aplica_em', 'descricao']
+
+    def __str__(self):
+        return self.descricao
+
+    def clean(self):
+        if self.forma == self.Forma.PERCENTUAL and self.valor and self.valor > 100:
+            raise ValidationError({'valor': 'Em porcentagem, o valor vai até 100.'})
+        if self.inicio and self.fim and self.fim < self.inicio:
+            raise ValidationError({'fim': 'O fim não pode ser anterior ao início.'})
+
+    def vale_em(self, referencia):
+        """Vale no mês da referência (qualquer dia do mês conta)."""
+        primeiro = referencia.replace(day=1)
+        proximo = (primeiro.replace(day=28) + timedelta(days=4)).replace(day=1)
+        if self.inicio and self.inicio >= proximo:
+            return False
+        return not (self.fim and self.fim < primeiro)
+
+    def calcular(self, base):
+        """Valor com sinal: positivo soma, negativo desconta."""
+        if self.forma == self.Forma.PERCENTUAL:
+            montante = (base * self.valor / Decimal('100')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        else:
+            montante = self.valor
+        return montante if self.natureza == self.Natureza.ACRESCIMO else -montante
+
+    @property
+    def resumo(self):
+        quantia = f'{self.valor:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+        return f'{quantia}%' if self.forma == self.Forma.PERCENTUAL else f'R$ {quantia}'
 
 
 def caminho_documento(instancia, nome_arquivo):

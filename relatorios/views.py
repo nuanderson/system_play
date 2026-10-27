@@ -132,7 +132,7 @@ class Inadimplencia(Relatorio):
 
     def csv(self, contexto):
         linhas = [
-            [texto(c.locatario), texto(c.unidade), c.get_tipo_display(), f'{c.referencia:%m/%Y}', data(c.vencimento),
+            [texto(c.locatario), texto(c.origem), c.get_tipo_display(), f'{c.referencia:%m/%Y}', data(c.vencimento),
              numero(c.valor), c.dias_atraso]
             for c in contexto['relatorio_dados']['atrasadas']
         ]

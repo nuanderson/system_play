@@ -34,6 +34,41 @@
   </dl>
 </div>
 
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Valores adicionais e descontos</div>
+<div class="cartao" style="margin-bottom:16px">
+  <table>
+    <thead><tr><th>Descrição</th><th>Tipo</th><th>Aplica em</th><th class="text-end">Valor</th><th>Período</th><th></th></tr></thead>
+    <tbody>
+      {% for a in ajustes %}
+        <tr>
+          <td>{{ a.descricao }}</td>
+          <td>{{ a.get_natureza_display }}</td>
+          <td>{{ a.get_aplica_em_display }}</td>
+          <td class="text-end">{% if a.natureza == 'desconto' %}−{% else %}+{% endif %} {{ a.resumo }}</td>
+          <td>{% if a.inicio or a.fim %}{{ a.inicio|date:"d/m/Y"|default:"início" }} a {{ a.fim|date:"d/m/Y"|default:"sem fim" }}{% else %}sempre{% endif %}</td>
+          <td>
+            {% if pode.contratos_editar %}
+              <form class="inline" method="post" action="{% url 'ajuste_excluir' a.pk %}" onsubmit="return confirm('Remover este valor?');">{% csrf_token %}<button class="btn btn-sm btn-perigo" type="submit">{% include 'partials/icone.html' with nome='lixeira' %}Remover</button></form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" class="suave">Nenhum valor adicional ou desconto neste contrato.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if form_ajuste %}
+    <form method="post" action="{% url 'ajuste_criar' contrato.pk %}" style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+      {% csrf_token %}
+      {% for campo in form_ajuste %}
+        <div class="campo" style="margin:0"><label for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}</div>
+      {% endfor %}
+      <button type="submit">Adicionar</button>
+    </form>
+    <p class="ajuda">Entra sozinho nas cobranças de aluguel ou de condomínio geradas a partir de agora, dentro do período. Cobranças já geradas não mudam.</p>
+  {% endif %}
+</div>
+
 <div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Documentos</div>
 <div class="cartao">
   <table>

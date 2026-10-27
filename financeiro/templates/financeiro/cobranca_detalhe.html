@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block titulo %}Cobrança · {{ cobranca.locatario }} · Edifício Uruz{% endblock %}
+{% block h1 %}{{ cobranca.get_tipo_display }} {{ cobranca.referencia|date:"m/Y" }} — {{ cobranca.locatario }}{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{% url 'cobranca_lista' %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Cobranças
+  </a>
+{% endblock %}
+{% block conteudo %}
+<p>
+  {% if cobranca.status == 'paga' %}<span class="selo vigente">Paga {{ cobranca.pago_em|date:"d/m/Y" }}</span>
+  {% elif cobranca.status == 'cancelada' %}<span class="selo encerrado">Cancelada</span>
+  {% elif cobranca.atrasada %}<span class="selo vencido">Atrasada {{ cobranca.dias_atraso }} d</span>
+  {% else %}<span class="selo negociacao">Em aberto</span>{% endif %}
+  {% if cobranca.fatura_disponivel and cobranca.status != 'cancelada' %}
+    <a class="btn btn-sm btn-acao ms-2" href="{% url 'fatura_baixar' cobranca.pk %}">{% include 'partials/icone.html' with nome='baixar' %}Fatura do condomínio (PDF)</a>
+  {% endif %}
+  {% if pode.financeiro_preparar and cobranca.status == 'aberta' %}
+    <a class="btn btn-sm btn-acao ms-2" href="{% url 'cobranca_pagar' cobranca.pk %}">{% include 'partials/icone.html' with nome='check' %}Pagar</a>
+    <a class="btn btn-sm btn-acao" href="{% url 'cobranca_editar' cobranca.pk %}">{% include 'partials/icone.html' with nome='lapis' %}Editar</a>
+  {% endif %}
+</p>
+
+<div class="cartao" style="margin-bottom:16px">
+  <dl class="dados">
+    <dt>Vencimento</dt><dd>{{ cobranca.vencimento|date:"d/m/Y" }}</dd>
+    <dt>Valor</dt><dd><strong>R$ {{ cobranca.valor|floatformat:"2g" }}</strong></dd>
+    {% if cobranca.status == 'paga' %}<dt>Valor pago</dt><dd>R$ {{ cobranca.valor_pago|floatformat:"2g" }}</dd>{% endif %}
+    {% if cobranca.observacao %}<dt>Observação</dt><dd>{{ cobranca.observacao }}</dd>{% endif %}
+  </dl>
+</div>
+
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">De onde vem o valor</div>
+<div class="cartao" style="margin-bottom:16px">
+  <div class="table-responsive">
+    <table class="table table-uruz align-middle mb-0">
+      <thead><tr><th>Unidade</th><th>Descrição</th><th class="text-end">Valor</th></tr></thead>
+      <tbody>
+        {% for i in cobranca.itens.all %}
+          <tr><td>{{ i.unidade }}</td><td>{{ i.descricao }}</td><td class="text-end">{% if i.valor < 0 %}−{% endif %} R$ {{ i.valor|floatformat:"2g"|cut:"-" }}</td></tr>
+        {% empty %}
+          <tr><td colspan="3" class="suave">Sem detalhamento.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="boleto" class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Boleto</div>
+<div class="cartao" style="margin-bottom:16px">
+  {% if cobranca.boleto %}
+    <p><a class="btn btn-sm btn-acao" href="{% url 'boleto_baixar' cobranca.pk %}">Baixar {{ cobranca.boleto_nome|default:"boleto" }}</a>
+      <span class="suave">salvo em {{ cobranca.boleto_enviado_em|date:"d/m/Y H:i" }}</span>
+      {% if pode.financeiro_preparar %}
+        <form class="inline" method="post" action="{% url 'boleto_remover' cobranca.pk %}" onsubmit="return confirm('Remover este boleto?');">{% csrf_token %}<button class="btn btn-sm btn-perigo" type="submit">{% include 'partials/icone.html' with nome='lixeira' %}Remover</button></form>
+      {% endif %}
+    </p>
+  {% else %}
+    <p class="suave">Nenhum boleto salvo para esta cobrança.</p>
+  {% endif %}
+  {% if form_boleto and cobranca.status != 'cancelada' %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'boleto_enviar' cobranca.pk %}" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+      {% csrf_token %}
+      <div class="campo" style="margin:0"><label for="{{ form_boleto.arquivo.id_for_label }}">{% if cobranca.boleto %}Trocar o boleto{% else %}Salvar o boleto{% endif %}</label>{{ form_boleto.arquivo }}</div>
+      <button type="submit">Enviar</button>
+    </form>
+    <p class="ajuda">PDF, JPG ou PNG, até 10 MB.</p>
+  {% endif %}
+</div>
+
+{% if form_envio and cobranca.status != 'cancelada' %}
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Enviar por e-mail</div>
+<div class="cartao">
+  {% if not email_configurado %}
+    <p class="suave">O e-mail de envio ainda não foi configurado no servidor. Assim que for, o botão abaixo passa a funcionar.</p>
+  {% endif %}
+  <form method="post" action="{% url 'cobranca_enviar' cobranca.pk %}" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+    {% csrf_token %}
+    <div class="campo" style="margin:0"><label for="{{ form_envio.para.id_for_label }}">{{ form_envio.para.label }}</label>{{ form_envio.para }}</div>
+    <div class="campo" style="margin:0"><label for="{{ form_envio.mensagem.id_for_label }}">{{ form_envio.mensagem.label }}</label>{{ form_envio.mensagem }}</div>
+    <div class="campo" style="margin:0"><label>{{ form_envio.anexar_boleto }} {{ form_envio.anexar_boleto.label }}</label></div>
+    {% if cobranca.fatura_disponivel %}<div class="campo" style="margin:0"><label>{{ form_envio.anexar_fatura }} {{ form_envio.anexar_fatura.label }}</label></div>{% endif %}
+    <button type="submit"{% if not email_configurado %} disabled{% endif %}>Enviar</button>
+  </form>
+  {% if not cobranca.locatario.email_cobranca %}<p class="ajuda">Esta empresa não tem e-mail de cobrança no cadastro. Preencha o e-mail acima, ou cadastre em Empresas para vir sozinho.</p>{% endif %}
+  {% if envios %}
+    <table style="margin-top:16px">
+      <thead><tr><th>Quando</th><th>Para</th><th>Anexos</th><th>Por</th><th>Resultado</th></tr></thead>
+      <tbody>
+        {% for e in envios %}
+          <tr><td>{{ e.enviado_em|date:"d/m/Y H:i" }}</td><td>{{ e.para }}</td><td>{% if e.com_boleto %}boleto{% endif %}{% if e.com_boleto and e.com_fatura %} + {% endif %}{% if e.com_fatura %}fatura{% endif %}{% if not e.com_boleto and not e.com_fatura %}—{% endif %}</td><td>{{ e.enviado_por|default:"—" }}</td>
+              <td>{% if e.ok %}<span class="selo vigente">Enviado</span>{% else %}<span class="selo vencido">Falhou</span> <span class="suave">{{ e.erro }}</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

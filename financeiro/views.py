@@ -1,3 +1,4 @@
+import os
 from decimal import Decimal
 
 from django.contrib import messages
@@ -5,19 +6,22 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Sum
 from django.forms import modelformset_factory
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views import View
-from django.views.generic import ListView, UpdateView
+from django.views.generic import DetailView, ListView, UpdateView
 
 from cadastros.models import Locatario
+from core.escopo import q_escopo
 from core.permissions import PermissaoRequiredMixin
 
-from . import servicos
+from . import envio, fatura, servicos
 from .calculo import ErroRateio, calcular_rateio
-from .forms import (AluguelGerarForm, CobrancaEditarForm, CobrancaPagarForm, CompetenciaNovaForm,
-                    DespesaMarcacaoForm)
+from .forms import (AluguelGerarForm, BoletoForm, CobrancaEditarForm, CobrancaPagarForm, CompetenciaNovaForm,
+                    DespesaMarcacaoForm, EnviarCobrancaForm)
 from .importacao import ErroImportacao, importar, ler_planilha
 from .models import Cobranca, Competencia, Despesa, Rateio
 
@@ -148,15 +152,20 @@ class CobrancaAcessoMixin(LoginRequiredMixin):
         return super().dispatch(request, *args, **kwargs)
 
 
+def cobrancas_visiveis(usuario):
+    """Quem vê tudo vê tudo. A empresa vê as suas cobranças (e a de uma unidade só, se for restrita a ela)."""
+    consulta = Cobranca.objects.select_related('unidade', 'locatario').prefetch_related('itens__unidade')
+    if usuario.pode('cobrancas_ver_todas'):
+        return consulta
+    return consulta.filter(q_escopo(usuario)).exclude(status=Cobranca.Status.CANCELADA)
+
+
 class CobrancaLista(CobrancaAcessoMixin, ListView):
     template_name = 'financeiro/cobranca_lista.html'
     context_object_name = 'cobrancas'
 
     def get_queryset(self):
-        usuario = self.request.user
-        consulta = Cobranca.objects.select_related('unidade', 'locatario')
-        if not usuario.pode('cobrancas_ver_todas'):
-            consulta = consulta.filter(unidade_id__in=usuario.unidades_ids()).exclude(status=Cobranca.Status.CANCELADA)
+        consulta = cobrancas_visiveis(self.request.user)
         situacao = self.request.GET.get('situacao', '')
         hoje = timezone.localdate()
         if situacao == 'atrasada':
@@ -193,6 +202,116 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
             empresas=Locatario.objects.filter(ativo=True) if self.request.user.pode('cobrancas_ver_todas') else [],
         )
         return contexto
+
+
+class CobrancaDetalhe(CobrancaAcessoMixin, DetailView):
+    template_name = 'financeiro/cobranca_detalhe.html'
+    context_object_name = 'cobranca'
+
+    def get_queryset(self):
+        return cobrancas_visiveis(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        if self.request.user.pode('financeiro_preparar'):
+            cobranca = self.object
+            contexto['form_boleto'] = BoletoForm()
+            contexto['form_envio'] = EnviarCobrancaForm(initial=dict(
+                para=cobranca.locatario.email_cobranca, anexar_boleto=bool(cobranca.boleto)))
+            contexto['email_configurado'] = envio.email_configurado()
+            contexto['envios'] = cobranca.envios.select_related('enviado_por')
+        return contexto
+
+
+class CobrancaEnviar(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
+
+    def post(self, request, pk):
+        cobranca = get_object_or_404(Cobranca.objects.exclude(status=Cobranca.Status.CANCELADA), pk=pk)
+        form = EnviarCobrancaForm(request.POST)
+        if not form.is_valid():
+            for erros in form.errors.values():
+                for erro in erros:
+                    messages.error(request, erro)
+            return redirect('cobranca_detalhe', pk=cobranca.pk)
+        try:
+            registro = envio.enviar_cobranca(
+                cobranca, form.cleaned_data['para'], request.user, form.cleaned_data['mensagem'],
+                form.cleaned_data['anexar_boleto'], form.cleaned_data['anexar_fatura'])
+        except envio.EmailNaoConfigurado as erro:
+            messages.error(request, str(erro))
+        else:
+            if registro.ok:
+                anexos = [nome for nome, tem in (('o boleto', registro.com_boleto), ('a fatura', registro.com_fatura)) if tem]
+                messages.success(request, f'Cobrança enviada para {registro.para}'
+                                          + (f' com {" e ".join(anexos)}.' if anexos else ' (sem anexos).'))
+            else:
+                messages.error(request, 'Não foi possível enviar. O motivo ficou registrado no histórico abaixo.')
+        return redirect('cobranca_detalhe', pk=cobranca.pk)
+
+
+class BoletoEnviar(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
+
+    def post(self, request, pk):
+        cobranca = get_object_or_404(Cobranca.objects.exclude(status=Cobranca.Status.CANCELADA), pk=pk)
+        form = BoletoForm(request.POST, request.FILES)
+        if form.is_valid():
+            arquivo = form.cleaned_data['arquivo']
+            if cobranca.boleto:
+                cobranca.boleto.delete(save=False)
+            cobranca.boleto = arquivo
+            cobranca.boleto_nome = os.path.basename(arquivo.name)[:255]
+            cobranca.boleto_enviado_em = timezone.now()
+            cobranca.save(update_fields=['boleto', 'boleto_nome', 'boleto_enviado_em'])
+            messages.success(request, 'Boleto salvo.')
+        else:
+            for erros in form.errors.values():
+                for erro in erros:
+                    messages.error(request, erro)
+        return redirect('cobranca_detalhe', pk=cobranca.pk)
+
+
+class FaturaBaixar(CobrancaAcessoMixin, View):
+    """A fatura do condomínio em PDF, para quem pode ver a cobrança."""
+
+    def get(self, request, pk):
+        cobranca = get_object_or_404(cobrancas_visiveis(request.user), pk=pk)
+        if not cobranca.fatura_disponivel:
+            raise Http404('Só o condomínio tem fatura.')
+        resposta = HttpResponse(fatura.gerar_pdf(cobranca), content_type='application/pdf')
+        nome = slugify(cobranca.locatario.razao_social)[:40] or 'empresa'
+        resposta['Content-Disposition'] = f'attachment; filename="fatura-{cobranca.referencia:%Y-%m}-{nome}.pdf"'
+        return resposta
+
+
+class BoletoBaixar(CobrancaAcessoMixin, View):
+    """Entrega o boleto só a quem pode ver a cobrança. O arquivo nunca fica em endereço público."""
+
+    def get(self, request, pk):
+        cobranca = get_object_or_404(cobrancas_visiveis(request.user), pk=pk)
+        if not cobranca.boleto:
+            raise Http404('Esta cobrança não tem boleto.')
+        try:
+            arquivo = cobranca.boleto.open('rb')
+        except FileNotFoundError:
+            raise Http404('Arquivo não encontrado.')
+        return FileResponse(arquivo, as_attachment=True, filename=cobranca.boleto_nome or cobranca.boleto.name)
+
+
+class BoletoRemover(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
+
+    def post(self, request, pk):
+        cobranca = get_object_or_404(Cobranca, pk=pk)
+        if cobranca.boleto:
+            cobranca.boleto.delete(save=False)
+            cobranca.boleto = ''
+            cobranca.boleto_nome = ''
+            cobranca.boleto_enviado_em = None
+            cobranca.save(update_fields=['boleto', 'boleto_nome', 'boleto_enviado_em'])
+            messages.success(request, 'Boleto removido.')
+        return redirect('cobranca_detalhe', pk=cobranca.pk)
 
 
 class AluguelGerar(PermissaoRequiredMixin, View):

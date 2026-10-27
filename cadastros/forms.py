@@ -20,7 +20,7 @@ class LocatarioForm(forms.ModelForm):
 
     class Meta:
         model = Locatario
-        fields = ['razao_social', 'cnpj', 'contato', 'email_cobranca', 'telefone', 'unidades', 'ativo']
+        fields = ['razao_social', 'cnpj', 'contato', 'email_cobranca', 'telefone', 'unidades', 'cobranca_unificada', 'ativo']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

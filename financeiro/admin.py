@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Cobranca, Competencia, Despesa, Rateio, RateioItem
+from .models import Cobranca, CobrancaItem, Competencia, Despesa, Rateio, RateioItem
 
 
 class DespesaInline(admin.TabularInline):
@@ -26,7 +26,13 @@ class RateioAdmin(admin.ModelAdmin):
     inlines = [RateioItemInline]
 
 
+class CobrancaItemInline(admin.TabularInline):
+    model = CobrancaItem
+    extra = 0
+
+
 @admin.register(Cobranca)
 class CobrancaAdmin(admin.ModelAdmin):
-    list_display = ('unidade', 'tipo', 'referencia', 'valor', 'vencimento', 'status')
+    list_display = ('locatario', 'unidade', 'tipo', 'referencia', 'valor', 'vencimento', 'status')
     list_filter = ('tipo', 'status')
+    inlines = [CobrancaItemInline]
