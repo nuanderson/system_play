@@ -9,7 +9,7 @@ from cadastros.models import Locatario, Unidade
 from chamados.models import Chamado
 from contatos.models import Contato
 from contratos.models import DIAS_ALERTA_VENCIMENTO, Contrato
-from core.escopo import q_escopo
+from core.escopo import empresa_do_usuario, q_escopo
 from core.models import Usuario
 from core.usuarios import pessoas_da_empresa
 from correspondencias.models import DIAS_ALERTA, Correspondencia
@@ -84,7 +84,12 @@ def resumos(usuario):
         dados['Usuários e acessos'] = plural(Usuario.objects.filter(is_active=True).count(), 'usuário ativo', 'usuários ativos')
     if usuario.pode('membros_gerenciar') and usuario.tem_escopo:
         ativos = pessoas_da_empresa(usuario).filter(is_active=True).count()
-        dados['Pessoas da empresa'] = plural(ativos, 'pessoa com acesso', 'pessoas com acesso')
+        empresa = empresa_do_usuario(usuario)
+        equipe = empresa.pessoas.filter(ativo=True).count() if empresa else 0
+        com_acesso = empresa.pessoas.filter(ativo=True, usuario__is_active=True).count() if empresa else 0
+        dados['Pessoas da empresa'] = (
+            f'{plural(equipe, "pessoa", "pessoas")} · {com_acesso} com acesso' if equipe
+            else plural(ativos, 'pessoa com acesso', 'pessoas com acesso'))
     if usuario.pode('financeiro_preparar'):
         ultima = Competencia.objects.first()
         dados['Condomínio e rateio'] = (

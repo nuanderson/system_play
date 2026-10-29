@@ -7,6 +7,7 @@ urlpatterns = [
     path('usuarios/novo/', v.UsuarioCriar.as_view(), name='usuario_criar'),
     path('usuarios/<int:pk>/editar/', v.UsuarioEditar.as_view(), name='usuario_editar'),
     path('usuarios/<int:pk>/ativar/', v.UsuarioAlternar.as_view(), name='usuario_alternar'),
+    path('usuarios/<int:pk>/desbloquear/', v.UsuarioDesbloquear.as_view(), name='usuario_desbloquear'),
     path('usuarios/<int:pk>/senha/', v.UsuarioNovaSenha.as_view(), name='usuario_senha'),
     path('pessoas/', v.MembroLista.as_view(), name='membros'),
     path('pessoas/nova/', v.MembroCriar.as_view(), name='membro_criar'),

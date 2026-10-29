@@ -22,6 +22,8 @@ RELATORIOS = [
          texto='Contratos vigentes, vencimentos, receita mensal de aluguel e unidades vagas.'),
     dict(nome='relatorio_correspondencias', titulo='Correspondências', icone='📬', cor='marinho',
          texto='Recebimentos e retiradas num período, e o que está parado na portaria.'),
+    dict(nome='relatorio_pessoas', titulo='Pessoas por empresa', icone='👥', cor='azul',
+         texto='Quantas pessoas cada empresa tem no prédio, com e sem acesso ao sistema.'),
 ]
 
 
@@ -194,3 +196,17 @@ class Correspondencias(Relatorio):
             f"correspondencias-{contexto['de']:%Y%m%d}-{contexto['ate']:%Y%m%d}",
             ['Nº', 'Recebida em', 'Empresa', 'Tipo', 'Aos cuidados de', 'Situação', 'Retirada ou devolvida em', 'Retirada por', 'Observação da baixa'],
             linhas)
+
+
+class Pessoas(Relatorio):
+    template_name = 'relatorios/pessoas.html'
+
+    def contexto(self, request):
+        return dict(relatorio_dados=dados.pessoas_por_empresa())
+
+    def csv(self, contexto):
+        base = contexto['relatorio_dados']
+        linhas = [[texto(l['empresa']), texto(l['unidades']), l['total'], l['com_acesso'], l['sem_acesso']]
+                  for l in base['linhas']]
+        linhas.append(['Total', '', base['total'], base['com_acesso'], base['sem_acesso']])
+        return resposta_csv('pessoas-por-empresa', ['Empresa', 'Unidades', 'Pessoas', 'Com acesso', 'Sem acesso'], linhas)

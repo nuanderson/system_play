@@ -76,3 +76,19 @@ class Usuario(AbstractUser):
 
     def __str__(self):
         return self.get_full_name() or self.username
+
+
+class BloqueioLogin(models.Model):
+    """Controle de tentativas de login erradas, por nome de usuário (existente ou não)."""
+
+    username = models.CharField('usuário', max_length=150, unique=True)
+    falhas = models.PositiveSmallIntegerField('erros seguidos', default=0)
+    ultima_falha = models.DateTimeField(null=True, blank=True)
+    bloqueado_ate = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'bloqueio de login'
+        verbose_name_plural = 'bloqueios de login'
+
+    def __str__(self):
+        return self.username

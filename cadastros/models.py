@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -23,6 +24,34 @@ class Locatario(models.Model):
 
     def __str__(self):
         return self.razao_social
+
+
+class PessoaEmpresa(models.Model):
+    """Quem trabalha na empresa, com ou sem acesso ao sistema. Serve para saber quantas pessoas o prédio tem."""
+
+    locatario = models.ForeignKey(Locatario, verbose_name='empresa', on_delete=models.CASCADE, related_name='pessoas')
+    nome = models.CharField('nome', max_length=150)
+    cargo = models.CharField('cargo ou função', max_length=100, blank=True)
+    telefone = models.CharField('telefone', max_length=30, blank=True)
+    email = models.EmailField('e-mail', blank=True)
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='pessoa',
+        help_text='Preenchido quando a pessoa também tem acesso ao sistema.',
+    )
+    ativo = models.BooleanField('na empresa', default=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'pessoa da empresa'
+        verbose_name_plural = 'pessoas da empresa'
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+    @property
+    def tem_acesso(self):
+        return bool(self.usuario_id and self.usuario.is_active)
 
 
 class Unidade(models.Model):

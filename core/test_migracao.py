@@ -72,6 +72,9 @@ class MigracaoParaEmpresaTests(TransactionTestCase):
         usuario = Usuario.objects.get(pk=usuario_com_unidade.pk)
         self.assertEqual((usuario.unidade_id, usuario.locatario_id, usuario.trocar_senha), (ocupada.pk, None, False))
         self.assertEqual(novo.get_model('contratos', 'Contrato').objects.get(pk=contrato.pk).locatario_id, clinica.pk)
+        # quem já tinha acesso passa a constar nas pessoas da empresa (pela unidade antiga)
+        pessoa = novo.get_model('cadastros', 'PessoaEmpresa').objects.get(usuario_id=usuario_com_unidade.pk)
+        self.assertEqual((pessoa.locatario_id, pessoa.nome, pessoa.ativo), (clinica.pk, 'resp', True))
 
     def test_migrar_sem_nenhum_dado_tambem_funciona(self):
         self.migrar(ANTES)

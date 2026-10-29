@@ -9,7 +9,9 @@
   <img class="logo-login" src="{% static 'img/logo.png' %}" alt="Play Participações">
   <h1 style="text-align:center; color:#05385c;">Edifício Uruz</h1>
   <form method="post">{% csrf_token %}
-    {% if form.non_field_errors %}<p class="erro">Usuário ou senha incorretos.</p>{% endif %}
+    {% for erro in form.non_field_errors.as_data %}
+      <p class="erro">{% if erro.code == 'bloqueado' %}{{ erro.message }}{% else %}Usuário ou senha incorretos.{% endif %}</p>
+    {% endfor %}
     <div class="campo"><label for="{{ form.username.id_for_label }}">Usuário</label>{{ form.username }}</div>
     <div class="campo"><label for="{{ form.password.id_for_label }}">Senha</label>{{ form.password }}</div>
     <input type="hidden" name="next" value="{{ next }}">

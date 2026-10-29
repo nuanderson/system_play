@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import URLPattern, URLResolver, get_resolver, reverse
 from django.utils import timezone
 
-from cadastros.models import Locatario, Unidade
+from cadastros.models import Locatario, PessoaEmpresa, Unidade
 from chamados.models import Chamado, Comentario
 from contatos.models import Contato
 from contratos.models import Contrato
@@ -54,6 +54,7 @@ class VarreduraTests(TestCase):
                 perfil, password='x', perfil=perfil, first_name=perfil.capitalize(), email=f'{perfil}@e.com',
                 locatario=self.clinica if perfil in ('locatario', 'membro') else None)
 
+        self.pessoa = PessoaEmpresa.objects.create(locatario=self.clinica, nome='Carla Dias', cargo='Recepção')
         hoje = timezone.localdate()
         self.contrato = Contrato.objects.create(
             unidade=self.sala1, locatario=self.clinica, status='vigente', data_inicio=date(2026, 1, 1),
@@ -79,6 +80,7 @@ class VarreduraTests(TestCase):
             'contrato_detalhe': self.contrato.pk, 'contrato_editar': self.contrato.pk,
             'competencia_detalhe': self.comp.pk, 'cobranca_editar': self.cobranca.pk, 'cobranca_pagar': self.cobranca.pk,
             'cobranca_detalhe': self.cobranca.pk, 'boleto_baixar': self.cobranca.pk,
+            'pessoa_lista': self.clinica.pk, 'pessoa_criar': self.clinica.pk, 'pessoa_editar': self.pessoa.pk,
             'chamado_detalhe': self.chamado.pk, 'correspondencia_detalhe': self.correspondencia.pk,
             'correspondencia_editar': self.correspondencia.pk, 'locatario_editar': self.clinica.pk,
             'unidade_editar': self.sala1.pk, 'usuario_editar': self.usuarios['locatario'].pk,

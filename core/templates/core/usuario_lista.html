@@ -27,12 +27,17 @@
             <td style="white-space:normal; min-width:170px;">{{ u.get_full_name|default:u.username }}{% if u.pk == user.pk %} <span class="suave">(você)</span>{% endif %}
               {% if not u.is_active %}<span class="badge text-bg-secondary">desativado</span>{% endif %}
               {% if u.trocar_senha %}<span class="badge text-bg-warning">senha provisória</span>{% endif %}
+              {% if u.bloqueado_ate %}<span class="badge text-bg-danger" title="Muitas senhas erradas">bloqueado até {{ u.bloqueado_ate|date:"H:i" }}</span>{% endif %}
               <div class="suave" style="font-size:.85rem">{{ u.username }}</div></td>
-            <td style="white-space:normal; min-width:150px;">{{ u.get_perfil_display }}{% if u.locatario or u.unidade %}<div class="suave" style="font-size:.85rem">{% if u.locatario %}{{ u.locatario }}{% endif %}{% if u.locatario and u.unidade %} · {% endif %}{% if u.unidade %}só {{ u.unidade }}{% elif u.locatario %}todas as unidades{% endif %}</div>{% endif %}</td>
+            <td style="white-space:normal; min-width:150px;">{{ u.get_perfil_display }}{% if u.locatario or u.unidade %}<div class="suave" style="font-size:.85rem">{% if u.locatario %}{{ u.locatario }}{% endif %}{% if u.locatario %} · {% endif %}{% if u.unidade %}só {{ u.unidade }}{% elif u.locatario %}todas as unidades{% endif %}</div>{% endif %}</td>
             <td>{{ u.last_login|date:"d/m/Y H:i"|default:"nunca entrou" }}</td>
             <td class="text-end">
               <div class="acoes">
                 <a class="btn btn-sm btn-acao so-icone" href="{% url 'usuario_editar' u.pk %}" title="Editar" aria-label="Editar {{ u.username }}">{% include 'partials/icone.html' with nome='lapis' %}</a>
+                {% if u.bloqueado_ate %}
+                  <form method="post" action="{% url 'usuario_desbloquear' u.pk %}">{% csrf_token %}
+                    <button class="btn btn-sm btn-acao" type="submit">Desbloquear</button></form>
+                {% endif %}
                 {% if u.pk != user.pk %}
                   {% if u.is_active %}
                     <form method="post" action="{% url 'usuario_senha' u.pk %}" onsubmit="return confirm('Gerar uma nova senha provisória para {{ u.username|escapejs }}? A senha atual deixa de valer.');">{% csrf_token %}

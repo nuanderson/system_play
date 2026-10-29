@@ -190,3 +190,25 @@ def correspondencias(de, ate):
         pendentes_agora=Correspondencia.pendentes().select_related('locatario', 'unidade').order_by('recebido_em'),
         dias_alerta=DIAS_ALERTA,
     )
+
+
+# ---- Pessoas por empresa -----------------------------------------------------
+
+def pessoas_por_empresa():
+    """Quantas pessoas cada empresa ativa tem, com e sem acesso ao sistema."""
+    from django.db.models import Prefetch
+    from cadastros.models import Locatario, PessoaEmpresa
+    ativas = PessoaEmpresa.objects.filter(ativo=True).select_related('usuario')
+    linhas, total, com_acesso = [], 0, 0
+    for empresa in Locatario.objects.filter(ativo=True).prefetch_related(
+            'unidades', Prefetch('pessoas', queryset=ativas, to_attr='pessoas_ativas')):
+        quantidade = len(empresa.pessoas_ativas)
+        acesso = sum(1 for p in empresa.pessoas_ativas if p.tem_acesso)
+        total += quantidade
+        com_acesso += acesso
+        linhas.append(dict(
+            empresa=empresa, unidades=', '.join(u.nome for u in empresa.unidades.all()),
+            total=quantidade, com_acesso=acesso, sem_acesso=quantidade - acesso))
+    linhas.sort(key=lambda l: (-l['total'], l['empresa'].razao_social))
+    return dict(linhas=linhas, total=total, com_acesso=com_acesso, sem_acesso=total - com_acesso,
+                sem_cadastro=[l['empresa'] for l in linhas if l['total'] == 0])

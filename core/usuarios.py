@@ -19,6 +19,18 @@ def pessoas_da_empresa(responsavel):
     return Usuario.objects.filter(filtro, perfil__in=Usuario.PERFIS_DA_UNIDADE)
 
 
+def garantir_pessoa(usuario):
+    """Quem recebe acesso por uma empresa também entra na lista de pessoas dela (uma vez só)."""
+    from cadastros.models import PessoaEmpresa
+    empresa_id = usuario.locatario_id or (usuario.unidade.locatario_id if usuario.unidade_id else None)
+    if usuario.perfil not in ('locatario', 'membro') or empresa_id is None:
+        return None
+    pessoa, _ = PessoaEmpresa.objects.get_or_create(usuario=usuario, defaults=dict(
+        locatario_id=empresa_id, nome=(usuario.get_full_name() or usuario.username),
+        telefone=usuario.telefone, email=usuario.email))
+    return pessoa
+
+
 def gerar_senha_provisoria(tamanho=10):
     return ''.join(secrets.choice(ALFABETO) for _ in range(tamanho))
 

@@ -1,0 +1,27 @@
+{% extends 'relatorios/base_relatorio.html' %}
+{% block corpo %}
+{% with d=relatorio_dados %}
+<div class="resumo">
+  <div class="cartao"><div class="suave">Pessoas no prédio</div><div class="valor">{{ d.total }}</div></div>
+  <div class="cartao"><div class="suave">Com acesso ao sistema</div><div class="valor">{{ d.com_acesso }}</div></div>
+  <div class="cartao"><div class="suave">Sem acesso</div><div class="valor">{{ d.sem_acesso }}</div></div>
+  <div class="cartao"><div class="suave">Empresas sem ninguém cadastrado</div><div class="valor" style="color:var(--alerta)">{{ d.sem_cadastro|length }}</div></div>
+</div>
+<div class="cartao">
+  <div class="titulo-cartao">Pessoas por empresa</div>
+  <div class="table-responsive">
+    <table class="table table-uruz mb-0 align-middle">
+      <thead><tr><th>Empresa</th><th>Unidades</th><th class="text-end">Pessoas</th><th class="text-end">Com acesso</th><th class="text-end">Sem acesso</th></tr></thead>
+      <tbody>
+        {% for l in d.linhas %}
+          <tr><td>{{ l.empresa }}</td><td style="white-space:normal">{{ l.unidades|default:"—" }}</td>
+            <td class="text-end"><strong>{{ l.total }}</strong></td><td class="text-end">{{ l.com_acesso }}</td><td class="text-end">{{ l.sem_acesso }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="suave">Nenhuma empresa ativa.</td></tr>
+        {% endfor %}
+        {% if d.linhas %}<tr><td><strong>Total</strong></td><td></td><td class="text-end"><strong>{{ d.total }}</strong></td><td class="text-end"><strong>{{ d.com_acesso }}</strong></td><td class="text-end"><strong>{{ d.sem_acesso }}</strong></td></tr>{% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

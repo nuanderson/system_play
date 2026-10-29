@@ -2,7 +2,7 @@ from django import forms
 from django.db import transaction
 from django.db.models import Q
 
-from .models import Locatario, Unidade
+from .models import Locatario, PessoaEmpresa, Unidade
 
 
 class UnidadesOcupadasField(forms.ModelMultipleChoiceField):
@@ -51,6 +51,12 @@ class LocatarioForm(forms.ModelForm):
             Unidade.objects.filter(locatario=locatario).exclude(pk__in=[u.pk for u in escolhidas]).update(locatario=None)
             Unidade.objects.filter(pk__in=[u.pk for u in escolhidas]).update(locatario=locatario)
         return locatario
+
+
+class PessoaEmpresaForm(forms.ModelForm):
+    class Meta:
+        model = PessoaEmpresa
+        fields = ['nome', 'cargo', 'telefone', 'email']
 
 
 class UnidadeForm(forms.ModelForm):

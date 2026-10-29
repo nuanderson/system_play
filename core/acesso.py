@@ -17,6 +17,7 @@ PERMISSOES = {
     # Pessoas e acessos
     'usuarios_gerenciar': {SINDICO},               # cria, edita e desativa qualquer usuário
     'membros_gerenciar': {LOCATARIO},              # cria e desativa os membros da própria unidade
+    'pessoas_gerenciar_todas': {SINDICO, ADMINISTRATIVO},  # lista de pessoas de qualquer empresa (contagem)
 
     # Cadastros
     'cadastros_ver': {SINDICO, ADMINISTRATIVO},    # listas de unidades e empresas

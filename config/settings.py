@@ -86,6 +86,9 @@ if 'test' in sys.argv:
     PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 SESSION_COOKIE_AGE = 60 * 60 * 12  # a sessão expira em 12 horas
+# Trava de login: erros seguidos para o mesmo usuário e quanto tempo ele fica bloqueado.
+LOGIN_MAX_FALHAS = int(os.environ.get('LOGIN_MAX_FALHAS', '5'))
+LOGIN_BLOQUEIO_MINUTOS = int(os.environ.get('LOGIN_BLOQUEIO_MINUTOS', '15'))
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'inicio'
 LOGOUT_REDIRECT_URL = 'login'

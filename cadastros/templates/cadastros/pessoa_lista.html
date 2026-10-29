@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block titulo %}Pessoas · {{ empresa }} · Edifício Uruz{% endblock %}
+{% block h1 %}Pessoas · {{ empresa }}{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{% url 'locatario_lista' %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Empresas
+  </a>
+{% endblock %}
+{% block conteudo %}
+<p class="suave"><strong>{{ pessoas|length }}</strong> {% if pessoas|length == 1 %}pessoa{% else %}pessoas{% endif %} na empresa. Todas contam aqui, mesmo as que não usam o sistema.</p>
+<p><a class="btn btn-marca" href="{% url 'pessoa_criar' empresa.pk %}">{% include 'partials/icone.html' with nome='mais' %}Adicionar pessoa</a></p>
+{% include 'cadastros/_pessoas_tabela.html' %}
+{% endblock %}

@@ -10,10 +10,12 @@ from django.views.decorators.cache import never_cache
 from django.views.generic import CreateView, ListView, UpdateView
 
 
+from . import bloqueio
+from .escopo import empresa_do_usuario
 from .forms import MembroForm, UsuarioForm
 from .models import Usuario
 from .permissions import PermissaoRequiredMixin
-from .usuarios import definir_senha_provisoria, pessoas_da_empresa
+from .usuarios import definir_senha_provisoria, garantir_pessoa, pessoas_da_empresa
 
 
 def guardar_senha_provisoria(request, usuario, voltar):
@@ -49,7 +51,12 @@ class UsuarioLista(PermissaoRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
+        bloqueados = bloqueio.bloqueados_agora()
+        usuarios = list(contexto['usuarios'])
+        for u in usuarios:
+            u.bloqueado_ate = bloqueados.get(bloqueio.chave(u.username))
         contexto.update(
+            usuarios=usuarios,
             perfis=Usuario.Perfil.choices,
             filtros=dict(perfil=self.request.GET.get('perfil', ''), situacao=self.request.GET.get('situacao', 'ativos')),
         )
@@ -72,6 +79,7 @@ class UsuarioCriar(PermissaoRequiredMixin, CreateView):
         usuario = form.save(commit=False)
         usuario.set_unusable_password()
         usuario.save()
+        garantir_pessoa(usuario)
         messages.success(self.request, f'{usuario} foi cadastrado.')
         return guardar_senha_provisoria(self.request, usuario, reverse('usuarios'))
 
@@ -108,6 +116,17 @@ class UsuarioAlternar(PermissaoRequiredMixin, View):
             usuario.is_active = not usuario.is_active
             usuario.save(update_fields=['is_active'])
             messages.success(request, f'{usuario}: acesso {"liberado" if usuario.is_active else "desativado"}.')
+        return redirect('usuarios')
+
+
+class UsuarioDesbloquear(PermissaoRequiredMixin, View):
+    """Libera quem errou a senha vezes demais, sem esperar o tempo do bloqueio passar."""
+    permissao = 'usuarios_gerenciar'
+
+    def post(self, request, pk):
+        usuario = get_object_or_404(Usuario, pk=pk)
+        bloqueio.limpar(usuario.username)
+        messages.success(request, f'{usuario}: login liberado.')
         return redirect('usuarios')
 
 
@@ -150,6 +169,10 @@ class MembroLista(MembrosMixin, ListView):
         contexto['empresa'] = usuario.locatario
         contexto['unidades'] = usuario.unidades()
         contexto['responsaveis'] = pessoas_da_empresa(usuario).filter(perfil=Usuario.Perfil.LOCATARIO, is_active=True)
+        minha_empresa = empresa_do_usuario(usuario)
+        contexto['empresa_cadastrada'] = minha_empresa
+        contexto['equipe'] = (minha_empresa.pessoas.filter(ativo=True).select_related('usuario')
+                              if minha_empresa else [])
         return contexto
 
 
@@ -174,6 +197,7 @@ class MembroCriar(MembrosMixin, CreateView):
             usuario.unidade = responsavel.unidade if responsavel.unidade_id else None
         usuario.set_unusable_password()
         usuario.save()
+        garantir_pessoa(usuario)
         messages.success(self.request, f'{usuario} agora tem acesso.')
         return guardar_senha_provisoria(self.request, usuario, reverse('membros'))
 

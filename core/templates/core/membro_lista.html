@@ -2,11 +2,18 @@
 {% block titulo %}Pessoas da empresa · Edifício Uruz{% endblock %}
 {% block h1 %}Pessoas da empresa{% endblock %}
 {% block conteudo %}
+{% if empresa_cadastrada %}
+<h2 style="font-size:1rem; margin:8px 0 6px;">Equipe da empresa · {{ equipe|length }} {% if equipe|length == 1 %}pessoa{% else %}pessoas{% endif %}</h2>
+<p class="suave">Cadastre todas as pessoas que trabalham na empresa, mesmo as que não vão usar o sistema. Serve para sabermos quantas pessoas há no prédio.</p>
+<p><a class="btn btn-marca" href="{% url 'pessoa_criar' empresa_cadastrada.pk %}">{% include 'partials/icone.html' with nome='mais' %}Adicionar pessoa à equipe</a></p>
+{% include 'cadastros/_pessoas_tabela.html' with pessoas=equipe %}
+<h2 style="font-size:1rem; margin:28px 0 6px;">Quem entra no sistema</h2>
+{% endif %}
 <p class="suave">
   {% if empresa %}<strong>{{ empresa }}</strong> · {% endif %}{% for u in unidades %}{{ u.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}.
   Quem pode entrar no sistema por {% if unidades|length > 1 %}estas unidades{% else %}esta unidade{% endif %}: vê os chamados e as correspondências {% if unidades|length > 1 %}delas{% else %}dela{% endif %} e pode abrir chamados.
 </p>
-<p><a class="btn btn-marca" href="{% url 'membro_criar' %}">{% include 'partials/icone.html' with nome='mais' %}Adicionar pessoa</a></p>
+<p><a class="btn btn-marca" href="{% url 'membro_criar' %}">{% include 'partials/icone.html' with nome='mais' %}Adicionar pessoa com acesso</a></p>
 
 <div class="cartao">
   <div class="table-responsive">
