@@ -3,7 +3,7 @@
 from django.conf import settings
 from django.core.mail import EmailMessage
 
-from . import fatura
+from . import fatura, pix
 from .models import EnvioCobranca
 
 
@@ -19,7 +19,7 @@ def _real(valor):
     return f'R$ {valor:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 
 
-def montar_texto(cobranca, mensagem=''):
+def montar_texto(cobranca, mensagem='', codigo_pix=None):
     linhas = [f'Olá, {cobranca.locatario}.', '']
     if mensagem:
         linhas += [mensagem.strip(), '']
@@ -35,19 +35,24 @@ def montar_texto(cobranca, mensagem=''):
         for item in itens:
             sinal = '- ' if item.valor < 0 else ''
             linhas.append(f'  {item.unidade.nome} · {item.descricao}: {sinal}{_real(abs(item.valor))}')
+    if codigo_pix:
+        linhas += ['', 'Para pagar pelo Pix, abra o app do seu banco e use o QR Code em anexo,',
+                   'ou escolha "Pix copia e cola" e cole o código abaixo:', '', codigo_pix,
+                   '', 'O valor já vem preenchido. Depois de pagar, avise a administração do prédio.']
     linhas += ['', 'Em caso de dúvida, responda este e-mail.', '', 'Play Participações · Edifício Uruz']
     return '\n'.join(linhas)
 
 
-def enviar_cobranca(cobranca, para, usuario, mensagem='', anexar_boleto=True, anexar_fatura=True):
+def enviar_cobranca(cobranca, para, usuario, mensagem='', anexar_boleto=True, anexar_fatura=True, incluir_pix=True):
     """Envia e registra o resultado. Falha do servidor de e-mail vira registro com erro, não exceção."""
     if not email_configurado():
         raise EmailNaoConfigurado('O e-mail de envio ainda não foi configurado no servidor.')
     com_boleto = bool(anexar_boleto and cobranca.boleto)
     com_fatura = bool(anexar_fatura and cobranca.fatura_disponivel)
+    codigo_pix = pix.codigo_da_cobranca(cobranca) if incluir_pix else None
     email = EmailMessage(
         subject=f'Cobrança de {cobranca.get_tipo_display().lower()} {cobranca.referencia:%m/%Y} · Edifício Uruz',
-        body=montar_texto(cobranca, mensagem), from_email=settings.DEFAULT_FROM_EMAIL, to=[para],
+        body=montar_texto(cobranca, mensagem, codigo_pix), from_email=settings.DEFAULT_FROM_EMAIL, to=[para],
         reply_to=[settings.EMAIL_RESPONDER_PARA] if settings.EMAIL_RESPONDER_PARA else None,
     )
     if com_boleto:
@@ -56,6 +61,8 @@ def enviar_cobranca(cobranca, para, usuario, mensagem='', anexar_boleto=True, an
                 email.attach(cobranca.boleto_nome or 'boleto.pdf', arquivo.read())
         except FileNotFoundError:
             com_boleto = False
+    if codigo_pix:
+        email.attach('pix-qrcode.png', pix.qr_png(codigo_pix), 'image/png')
     if com_fatura:
         email.attach(f'fatura-condominio-{cobranca.referencia:%Y-%m}.pdf', fatura.gerar_pdf(cobranca), 'application/pdf')
     try:
@@ -64,5 +71,5 @@ def enviar_cobranca(cobranca, para, usuario, mensagem='', anexar_boleto=True, an
     except Exception as exc:  # servidor recusou, senha errada, sem rede...
         erro = f'{type(exc).__name__}: {exc}'[:300]
     return EnvioCobranca.objects.create(
-        cobranca=cobranca, para=para, com_boleto=com_boleto, com_fatura=com_fatura, enviado_por=usuario,
+        cobranca=cobranca, para=para, com_boleto=com_boleto, com_fatura=com_fatura, com_pix=bool(codigo_pix), enviado_por=usuario,
         ok=not erro, erro=erro)

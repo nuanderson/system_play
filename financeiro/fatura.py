@@ -12,6 +12,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from . import pix
 from .models import Despesa
 
 MARINHO = colors.HexColor('#05385C')
@@ -148,6 +149,20 @@ def gerar_pdf(cobranca):
         'Despesas consideradas no rateio. Energia e água seguem o percentual definido em contrato, quando houver; '
         'as demais despesas são divididas pela área de cada unidade. Multas e juros pagos por atraso não entram.',
         estilo['nota']))
+
+    codigo = pix.codigo_da_cobranca(cobranca)
+    if codigo:
+        qr = Image(io.BytesIO(pix.qr_png(codigo, escala=6)), width=34 * mm, height=34 * mm)
+        explicacao = [
+            Paragraph('Pague pelo Pix', estilo['secao']),
+            Paragraph(f'Leia o QR Code no app do seu banco. O valor de {real(cobranca.valor)} já vem preenchido.',
+                      estilo['normal']),
+            Spacer(1, 4), Paragraph('Pix copia e cola:', estilo['nota']),
+            Paragraph(f'<font name="Courier" size="6.5">{codigo}</font>', estilo['nota'])]
+        caixa = Table([[qr, explicacao]], colWidths=[40 * mm, largura - 40 * mm])
+        caixa.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('BOX', (0, 0), (-1, -1), 0.5, LINHA),
+                                   ('BACKGROUND', (0, 0), (-1, -1), FUNDO), ('LEFTPADDING', (0, 0), (-1, -1), 8)]))
+        historia += [Spacer(1, 14), caixa]
 
     historia.append(Spacer(1, 16))
     historia.append(Paragraph(

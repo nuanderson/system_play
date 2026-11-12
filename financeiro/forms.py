@@ -71,6 +71,7 @@ class EnviarCobrancaForm(forms.Form):
     mensagem = forms.CharField(label='Recado (opcional)', required=False, max_length=500,
                                widget=forms.Textarea(attrs={'rows': 2}))
     anexar_boleto = forms.BooleanField(label='Anexar o boleto', required=False, initial=True)
+    incluir_pix = forms.BooleanField(label='Incluir o Pix (QR Code e copia e cola)', required=False, initial=True)
     anexar_fatura = forms.BooleanField(label='Anexar a fatura do condomínio (PDF)', required=False, initial=True)
 
 

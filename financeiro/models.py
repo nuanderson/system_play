@@ -245,6 +245,7 @@ class EnvioCobranca(models.Model):
     para = models.EmailField('enviado para')
     com_boleto = models.BooleanField('com boleto', default=False)
     com_fatura = models.BooleanField('com fatura', default=False)
+    com_pix = models.BooleanField('com Pix', default=False)
     enviado_em = models.DateTimeField(auto_now_add=True)
     enviado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',

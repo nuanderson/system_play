@@ -136,6 +136,11 @@ EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_FROM', EMAIL_HOST_USER or 'sistema@localhost')
 EMAIL_RESPONDER_PARA = os.environ.get('EMAIL_RESPONDER_PARA', '')
 
+# Pix da conta que recebe (QR Code estático, sem API do banco). Sem isso o Pix não aparece.
+PIX_CHAVE = os.environ.get('PIX_CHAVE', '')
+PIX_NOME = os.environ.get('PIX_NOME', '')      # nome do recebedor, até 25 letras
+PIX_CIDADE = os.environ.get('PIX_CIDADE', '')  # cidade do recebedor, até 15 letras
+
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 

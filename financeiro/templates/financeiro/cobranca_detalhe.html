@@ -46,6 +46,23 @@
   </div>
 </div>
 
+{% if pix_codigo %}
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Pagar com Pix</div>
+<div class="cartao" style="margin-bottom:16px">
+  <div style="display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start;">
+    <div style="background:#fff; border-radius:10px; padding:8px; width:210px; max-width:100%; line-height:0;">{{ pix_qr|safe }}</div>
+    <div style="flex:1; min-width:240px;">
+      <p style="margin:0 0 6px">Abra o app do banco, escolha <strong>Pagar com Pix</strong> e leia o QR Code. O valor de <strong>R$ {{ cobranca.valor|floatformat:"2g" }}</strong> já vem preenchido.</p>
+      <label for="pix-codigo" class="suave" style="font-size:.85rem">Pix copia e cola</label>
+      <textarea id="pix-codigo" readonly rows="4" style="width:100%; font-family:monospace; font-size:.8rem; padding:8px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto);">{{ pix_codigo }}</textarea>
+      <button type="button" class="btn btn-sm btn-acao mt-2" onclick="var t=document.getElementById('pix-codigo'); t.select(); navigator.clipboard.writeText(t.value).then(function(){ document.getElementById('pix-copiado').hidden=false; });">Copiar código</button>
+      <span id="pix-copiado" class="suave" hidden> Copiado!</span>
+      {% if pode.financeiro_preparar %}<p class="ajuda mt-2">O Pix não avisa o sistema. Quando o dinheiro entrar na conta, use <strong>Pagar</strong> para dar baixa.</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div id="boleto" class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Boleto</div>
 <div class="cartao" style="margin-bottom:16px">
   {% if cobranca.boleto %}
@@ -79,6 +96,7 @@
     <div class="campo" style="margin:0"><label for="{{ form_envio.para.id_for_label }}">{{ form_envio.para.label }}</label>{{ form_envio.para }}</div>
     <div class="campo" style="margin:0"><label for="{{ form_envio.mensagem.id_for_label }}">{{ form_envio.mensagem.label }}</label>{{ form_envio.mensagem }}</div>
     <div class="campo" style="margin:0"><label>{{ form_envio.anexar_boleto }} {{ form_envio.anexar_boleto.label }}</label></div>
+    {% if pix_codigo %}<div class="campo" style="margin:0"><label>{{ form_envio.incluir_pix }} {{ form_envio.incluir_pix.label }}</label></div>{% endif %}
     {% if cobranca.fatura_disponivel %}<div class="campo" style="margin:0"><label>{{ form_envio.anexar_fatura }} {{ form_envio.anexar_fatura.label }}</label></div>{% endif %}
     <button type="submit"{% if not email_configurado %} disabled{% endif %}>Enviar</button>
   </form>
@@ -88,7 +106,7 @@
       <thead><tr><th>Quando</th><th>Para</th><th>Anexos</th><th>Por</th><th>Resultado</th></tr></thead>
       <tbody>
         {% for e in envios %}
-          <tr><td>{{ e.enviado_em|date:"d/m/Y H:i" }}</td><td>{{ e.para }}</td><td>{% if e.com_boleto %}boleto{% endif %}{% if e.com_boleto and e.com_fatura %} + {% endif %}{% if e.com_fatura %}fatura{% endif %}{% if not e.com_boleto and not e.com_fatura %}—{% endif %}</td><td>{{ e.enviado_por|default:"—" }}</td>
+          <tr><td>{{ e.enviado_em|date:"d/m/Y H:i" }}</td><td>{{ e.para }}</td><td>{% if e.com_boleto %}boleto{% endif %}{% if e.com_boleto and e.com_fatura %} + {% endif %}{% if e.com_fatura %}fatura{% endif %}{% if e.com_pix %}{% if e.com_boleto or e.com_fatura %} + {% endif %}Pix{% endif %}{% if not e.com_boleto and not e.com_fatura and not e.com_pix %}—{% endif %}</td><td>{{ e.enviado_por|default:"—" }}</td>
               <td>{% if e.ok %}<span class="selo vigente">Enviado</span>{% else %}<span class="selo vencido">Falhou</span> <span class="suave">{{ e.erro }}</span>{% endif %}</td></tr>
         {% endfor %}
       </tbody>

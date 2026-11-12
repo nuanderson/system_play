@@ -18,7 +18,7 @@ from cadastros.models import Locatario
 from core.escopo import q_escopo
 from core.permissions import PermissaoRequiredMixin
 
-from . import envio, fatura, servicos
+from . import envio, fatura, pix, servicos
 from .calculo import ErroRateio, calcular_rateio
 from .forms import (AluguelGerarForm, BoletoForm, CobrancaEditarForm, CobrancaPagarForm, CompetenciaNovaForm,
                     DespesaMarcacaoForm, EnviarCobrancaForm)
@@ -213,6 +213,9 @@ class CobrancaDetalhe(CobrancaAcessoMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
+        codigo = pix.codigo_da_cobranca(self.object) if self.object.status == Cobranca.Status.ABERTA else None
+        if codigo:
+            contexto.update(pix_codigo=codigo, pix_qr=pix.qr_svg(codigo))
         if self.request.user.pode('financeiro_preparar'):
             cobranca = self.object
             contexto['form_boleto'] = BoletoForm()
@@ -237,12 +240,13 @@ class CobrancaEnviar(PermissaoRequiredMixin, View):
         try:
             registro = envio.enviar_cobranca(
                 cobranca, form.cleaned_data['para'], request.user, form.cleaned_data['mensagem'],
-                form.cleaned_data['anexar_boleto'], form.cleaned_data['anexar_fatura'])
+                form.cleaned_data['anexar_boleto'], form.cleaned_data['anexar_fatura'], form.cleaned_data['incluir_pix'])
         except envio.EmailNaoConfigurado as erro:
             messages.error(request, str(erro))
         else:
             if registro.ok:
-                anexos = [nome for nome, tem in (('o boleto', registro.com_boleto), ('a fatura', registro.com_fatura)) if tem]
+                anexos = [nome for nome, tem in (('o boleto', registro.com_boleto), ('a fatura', registro.com_fatura),
+                                                  ('o Pix', registro.com_pix)) if tem]
                 messages.success(request, f'Cobrança enviada para {registro.para}'
                                           + (f' com {" e ".join(anexos)}.' if anexos else ' (sem anexos).'))
             else:
