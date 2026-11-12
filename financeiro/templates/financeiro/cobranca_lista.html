@@ -66,6 +66,12 @@
                       <button class="btn btn-sm btn-perigo so-icone" type="submit" title="Cancelar cobrança" aria-label="Cancelar cobrança">{% include 'partials/icone.html' with nome='x' %}</button>
                     </form>
                   </div>
+                {% elif c.status == 'cancelada' %}
+                  <div class="acoes">
+                    <form method="post" action="{% url 'cobranca_reativar' c.pk %}" onsubmit="return confirm('Reativar esta cobrança? Ela volta para em aberto.');">{% csrf_token %}
+                      <button class="btn btn-sm btn-acao" type="submit">{% include 'partials/icone.html' with nome='check' %}Reativar</button>
+                    </form>
+                  </div>
                 {% endif %}
               </td>
             {% endif %}

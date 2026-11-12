@@ -446,6 +446,23 @@ class CobrancaCancelar(PermissaoRequiredMixin, View):
         return redirect('cobranca_lista')
 
 
+class CobrancaReativar(PermissaoRequiredMixin, View):
+    """Desfaz um cancelamento feito por engano. Recusa se já existe outra cobrança ativa no lugar dela."""
+    permissao = 'financeiro_preparar'
+
+    def post(self, request, pk):
+        cobranca = get_object_or_404(Cobranca, pk=pk, status=Cobranca.Status.CANCELADA)
+        outra = servicos.conflito_ao_reativar(cobranca)
+        if outra:
+            messages.error(request, f'Não dá para reativar: já existe outra cobrança ativa de {cobranca.get_tipo_display().lower()} '
+                                    f'{cobranca.referencia:%m/%Y} para {outra.origem} (situação: {outra.get_status_display().lower()}).')
+            return redirect('cobranca_detalhe', pk=cobranca.pk)
+        cobranca.status = Cobranca.Status.ABERTA
+        cobranca.save(update_fields=['status'])
+        messages.success(request, 'Cobrança reativada. Ela voltou para "em aberto".')
+        return redirect('cobranca_detalhe', pk=cobranca.pk)
+
+
 class CobrancaEditar(PermissaoRequiredMixin, UpdateView):
     permissao = 'financeiro_preparar'
     model = Cobranca

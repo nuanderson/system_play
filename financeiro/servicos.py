@@ -20,6 +20,16 @@ def _ja_existe(unidade, tipo, referencia):
     return ativas.filter(Q(unidade=unidade) | Q(itens__unidade=unidade)).exists()
 
 
+def conflito_ao_reativar(cobranca):
+    """Outra cobrança ativa que já cobre as mesmas unidades no mesmo tipo e mês, se houver (reativar duplicaria)."""
+    unidades = {i.unidade_id for i in cobranca.itens.all()}
+    if cobranca.unidade_id:
+        unidades.add(cobranca.unidade_id)
+    ativas = (Cobranca.objects.filter(tipo=cobranca.tipo, referencia=cobranca.referencia)
+              .exclude(pk=cobranca.pk).exclude(status=Cobranca.Status.CANCELADA))
+    return ativas.filter(Q(unidade__in=unidades) | Q(itens__unidade__in=unidades)).distinct().first()
+
+
 def _linhas(contrato, unidade, tipo, referencia, descricao, base):
     """O valor da unidade e, abaixo dele, os acréscimos e descontos do contrato que valem no mês."""
     linhas = [(unidade, descricao, base)]

@@ -19,6 +19,7 @@ urlpatterns = [
     path('cobrancas/<int:pk>/boleto/remover/', views.BoletoRemover.as_view(), name='boleto_remover'),
     path('cobrancas/aluguel/', views.AluguelGerar.as_view(), name='aluguel_gerar'),
     path('cobrancas/<int:pk>/pagar/', views.CobrancaPagar.as_view(), name='cobranca_pagar'),
+    path('cobrancas/<int:pk>/reativar/', views.CobrancaReativar.as_view(), name='cobranca_reativar'),
     path('cobrancas/<int:pk>/cancelar/', views.CobrancaCancelar.as_view(), name='cobranca_cancelar'),
     path('cobrancas/<int:pk>/editar/', views.CobrancaEditar.as_view(), name='cobranca_editar'),
 ]

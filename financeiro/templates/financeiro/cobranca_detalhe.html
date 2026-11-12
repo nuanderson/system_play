@@ -19,6 +19,11 @@
     <a class="btn btn-sm btn-acao ms-2" href="{% url 'cobranca_pagar' cobranca.pk %}">{% include 'partials/icone.html' with nome='check' %}Pagar</a>
     <a class="btn btn-sm btn-acao" href="{% url 'cobranca_editar' cobranca.pk %}">{% include 'partials/icone.html' with nome='lapis' %}Editar</a>
   {% endif %}
+  {% if pode.financeiro_preparar and cobranca.status == 'cancelada' %}
+    <form class="inline ms-2" method="post" action="{% url 'cobranca_reativar' cobranca.pk %}" onsubmit="return confirm('Reativar esta cobrança? Ela volta para em aberto.');">{% csrf_token %}
+      <button class="btn btn-sm btn-acao" type="submit">{% include 'partials/icone.html' with nome='check' %}Reativar cobrança</button>
+    </form>
+  {% endif %}
 </p>
 
 <div class="cartao" style="margin-bottom:16px">
