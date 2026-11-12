@@ -37,8 +37,7 @@ def montar_texto(cobranca, mensagem='', codigo_pix=None):
             linhas.append(f'  {item.unidade.nome} · {item.descricao}: {sinal}{_real(abs(item.valor))}')
     if codigo_pix:
         linhas += ['', 'Para pagar pelo Pix, abra o app do seu banco e use o QR Code em anexo,',
-                   'ou escolha "Pix copia e cola" e cole o código abaixo:', '', codigo_pix,
-                   '', 'O valor já vem preenchido. Depois de pagar, avise a administração do prédio.']
+                   'ou escolha "Pix copia e cola" e cole o código abaixo:', '', codigo_pix]
     linhas += ['', 'Em caso de dúvida, responda este e-mail.', '', 'Play Participações · Edifício Uruz']
     return '\n'.join(linhas)
 

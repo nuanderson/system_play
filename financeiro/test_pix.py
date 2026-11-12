@@ -132,6 +132,7 @@ class PixNaCobrancaTests(Base):
         email = mail.outbox[0]
         self.assertIn(pix.codigo_da_cobranca(self.cobranca), email.body)
         self.assertIn('Pix copia e cola', email.body)
+        self.assertNotIn('avise a administração', email.body)  # a conferência é feita pelo extrato
         self.assertEqual([a[0] for a in email.attachments], ['pix-qrcode.png'])
         self.assertTrue(EnvioCobranca.objects.get().com_pix)
 
