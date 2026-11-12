@@ -47,17 +47,26 @@
 </div>
 
 {% if pix_codigo %}
+<style>
+  .pix { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+  .pix-qr { flex:0 0 auto; width:220px; max-width:100%; background:#fff; border:1px solid var(--borda); border-radius:12px; padding:10px; line-height:0; }
+  .pix-qr svg { display:block; width:100%; height:auto; }
+  .pix-texto { flex:1 1 280px; min-width:0; }
+  .pix-texto textarea { width:100%; font-family:ui-monospace, Consolas, monospace; font-size:.8rem; padding:8px 10px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto); resize:vertical; }
+</style>
 <div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Pagar com Pix</div>
 <div class="cartao" style="margin-bottom:16px">
-  <div style="display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start;">
-    <div style="background:#fff; border-radius:10px; padding:8px; width:210px; max-width:100%; line-height:0;">{{ pix_qr|safe }}</div>
-    <div style="flex:1; min-width:240px;">
-      <p style="margin:0 0 6px">Abra o app do banco, escolha <strong>Pagar com Pix</strong> e leia o QR Code. O valor de <strong>R$ {{ cobranca.valor|floatformat:"2g" }}</strong> já vem preenchido.</p>
-      <label for="pix-codigo" class="suave" style="font-size:.85rem">Pix copia e cola</label>
-      <textarea id="pix-codigo" readonly rows="4" style="width:100%; font-family:monospace; font-size:.8rem; padding:8px; border:1px solid var(--borda); border-radius:8px; background:var(--cartao); color:var(--texto);">{{ pix_codigo }}</textarea>
-      <button type="button" class="btn btn-sm btn-acao mt-2" onclick="var t=document.getElementById('pix-codigo'); t.select(); navigator.clipboard.writeText(t.value).then(function(){ document.getElementById('pix-copiado').hidden=false; });">Copiar código</button>
-      <span id="pix-copiado" class="suave" hidden> Copiado!</span>
-      {% if pode.financeiro_preparar %}<p class="ajuda mt-2">O Pix não avisa o sistema. Quando o dinheiro entrar na conta, use <strong>Pagar</strong> para dar baixa.</p>{% endif %}
+  <div class="pix">
+    <div class="pix-qr" role="img" aria-label="QR Code do Pix no valor de R$ {{ cobranca.valor|floatformat:"2g" }}">{{ pix_qr|safe }}</div>
+    <div class="pix-texto">
+      <p style="margin:0 0 12px">Abra o app do banco, escolha <strong>Pagar com Pix</strong> e leia o QR Code. O valor de <strong>R$ {{ cobranca.valor|floatformat:"2g" }}</strong> já vem preenchido.</p>
+      <label for="pix-codigo" class="suave" style="font-size:.85rem; display:block; margin-bottom:4px">Pix copia e cola</label>
+      <textarea id="pix-codigo" readonly rows="4">{{ pix_codigo }}</textarea>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <button type="button" class="btn btn-sm btn-acao" onclick="var t=document.getElementById('pix-codigo'); t.select(); navigator.clipboard.writeText(t.value).then(function(){ document.getElementById('pix-copiado').hidden=false; });">Copiar código</button>
+        <span id="pix-copiado" class="suave" hidden>Copiado!</span>
+      </div>
+      {% if pode.financeiro_preparar %}<p class="ajuda mt-3 mb-0">O Pix não avisa o sistema. Quando o dinheiro entrar na conta, use <strong>Pagar</strong> para dar baixa.</p>{% endif %}
     </div>
   </div>
 </div>

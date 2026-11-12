@@ -80,6 +80,13 @@ class CodigoPixTests(SimpleTestCase):
         self.assertIn('<svg', pix.qr_svg(codigo))
         self.assertTrue(pix.qr_png(codigo).startswith(b'\x89PNG'))
 
+    def test_svg_se_ajusta_a_caixa_em_vez_de_ter_tamanho_fixo(self):
+        svg = pix.qr_svg(self.monta())
+        abertura = svg[:svg.index('>')]
+        self.assertIn('viewBox=', abertura)
+        self.assertNotIn(' width=', abertura)
+        self.assertNotIn(' height=', abertura)
+
     def test_sem_configuracao_nao_ha_pix(self):
         with override_settings(PIX_CHAVE='', PIX_NOME='', PIX_CIDADE=''):
             self.assertFalse(pix.configurado())

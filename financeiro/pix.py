@@ -68,8 +68,8 @@ def codigo_da_cobranca(cobranca):
 
 
 def qr_svg(codigo):
-    """SVG para colocar direto na página."""
-    return segno.make(codigo, error='m').svg_inline(scale=5, border=2, dark='#05385c', light='#ffffff')
+    """SVG para colocar na página. Sem tamanho fixo: ele se ajusta à caixa em que for colocado."""
+    return segno.make(codigo, error='m').svg_inline(border=2, dark='#05385c', light='#ffffff', omitsize=True)
 
 
 def qr_png(codigo, escala=8):
