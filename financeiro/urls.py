@@ -10,6 +10,7 @@ urlpatterns = [
     path('competencias/<int:pk>/calcular/', views.RateioCalcular.as_view(), name='rateio_calcular'),
     path('competencias/<int:pk>/aprovar/', views.RateioAprovar.as_view(), name='rateio_aprovar'),
     path('cobrancas/', views.CobrancaLista.as_view(), name='cobranca_lista'),
+    path('cobrancas/enviar-todas/', views.CobrancaEnviarTodas.as_view(), name='cobranca_enviar_todas'),
     path('cobrancas/<int:pk>/', views.CobrancaDetalhe.as_view(), name='cobranca_detalhe'),
     path('cobrancas/<int:pk>/fatura/', views.FaturaBaixar.as_view(), name='fatura_baixar'),
     path('cobrancas/<int:pk>/enviar/', views.CobrancaEnviar.as_view(), name='cobranca_enviar'),

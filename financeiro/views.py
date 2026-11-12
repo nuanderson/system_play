@@ -6,6 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Sum
 from django.forms import modelformset_factory
+from django.core.mail import get_connection
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -14,6 +15,7 @@ from django.utils.text import slugify
 from django.views import View
 from django.views.generic import DetailView, ListView, UpdateView
 
+from cadastros.emails import separar_emails
 from cadastros.models import Locatario
 from core.escopo import q_escopo
 from core.permissions import PermissaoRequiredMixin
@@ -21,9 +23,9 @@ from core.permissions import PermissaoRequiredMixin
 from . import envio, fatura, pix, servicos
 from .calculo import ErroRateio, calcular_rateio
 from .forms import (AluguelGerarForm, BoletoForm, CobrancaEditarForm, CobrancaPagarForm, CompetenciaNovaForm,
-                    DespesaMarcacaoForm, EnviarCobrancaForm)
+                    DespesaMarcacaoForm, EnviarCobrancaForm, EnviarTodasForm)
 from .importacao import ErroImportacao, importar, ler_planilha
-from .models import Cobranca, Competencia, Despesa, Rateio
+from .models import Cobranca, Competencia, Despesa, EnvioCobranca, Rateio
 
 DespesaFormSet = modelformset_factory(Despesa, form=DespesaMarcacaoForm, extra=0)
 
@@ -160,30 +162,34 @@ def cobrancas_visiveis(usuario):
     return consulta.filter(q_escopo(usuario)).exclude(status=Cobranca.Status.CANCELADA)
 
 
+def filtrar_cobrancas(consulta, params):
+    """Os filtros da lista (situação, tipo, mês e empresa), também usados pelo envio em lote."""
+    situacao = params.get('situacao', '')
+    hoje = timezone.localdate()
+    if situacao == 'atrasada':
+        consulta = consulta.filter(status=Cobranca.Status.ABERTA, vencimento__lt=hoje)
+    elif situacao == 'aberta':
+        consulta = consulta.filter(status=Cobranca.Status.ABERTA)
+    elif situacao in (Cobranca.Status.PAGA, Cobranca.Status.CANCELADA):
+        consulta = consulta.filter(status=situacao)
+    tipo = params.get('tipo', '')
+    if tipo in Cobranca.Tipo.values:
+        consulta = consulta.filter(tipo=tipo)
+    mes = params.get('mes', '')
+    if len(mes) == 7 and mes[4] == '-' and mes[:4].isdigit() and mes[5:].isdigit():
+        consulta = consulta.filter(referencia__year=int(mes[:4]), referencia__month=int(mes[5:]))
+    empresa = params.get('empresa', '')
+    if empresa.isdigit():
+        consulta = consulta.filter(locatario_id=int(empresa))
+    return consulta
+
+
 class CobrancaLista(CobrancaAcessoMixin, ListView):
     template_name = 'financeiro/cobranca_lista.html'
     context_object_name = 'cobrancas'
 
     def get_queryset(self):
-        consulta = cobrancas_visiveis(self.request.user)
-        situacao = self.request.GET.get('situacao', '')
-        hoje = timezone.localdate()
-        if situacao == 'atrasada':
-            consulta = consulta.filter(status=Cobranca.Status.ABERTA, vencimento__lt=hoje)
-        elif situacao == 'aberta':
-            consulta = consulta.filter(status=Cobranca.Status.ABERTA)
-        elif situacao in (Cobranca.Status.PAGA, Cobranca.Status.CANCELADA):
-            consulta = consulta.filter(status=situacao)
-        tipo = self.request.GET.get('tipo', '')
-        if tipo in Cobranca.Tipo.values:
-            consulta = consulta.filter(tipo=tipo)
-        mes = self.request.GET.get('mes', '')
-        if len(mes) == 7 and mes[4] == '-' and mes[:4].isdigit() and mes[5:].isdigit():
-            consulta = consulta.filter(referencia__year=int(mes[:4]), referencia__month=int(mes[5:]))
-        empresa = self.request.GET.get('empresa', '')
-        if empresa.isdigit():
-            consulta = consulta.filter(locatario_id=int(empresa))
-        return consulta
+        return filtrar_cobrancas(cobrancas_visiveis(self.request.user), self.request.GET)
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
@@ -199,6 +205,8 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
             ),
             situacoes=[('aberta', 'Em aberto'), ('atrasada', 'Atrasadas'), ('paga', 'Pagas'), ('cancelada', 'Canceladas')],
             tipos=Cobranca.Tipo.choices,
+            consulta_texto=self.request.GET.urlencode(),
+            email_configurado=envio.email_configurado(),
             empresas=Locatario.objects.filter(ativo=True) if self.request.user.pode('cobrancas_ver_todas') else [],
         )
         return contexto
@@ -274,6 +282,79 @@ class BoletoEnviar(PermissaoRequiredMixin, View):
                 for erro in erros:
                     messages.error(request, erro)
         return redirect('cobranca_detalhe', pk=cobranca.pk)
+
+
+class CobrancaEnviarTodas(PermissaoRequiredMixin, View):
+    """Envia por e-mail as cobranças em aberto da lista (com os mesmos filtros), depois de uma conferência."""
+    permissao = 'financeiro_preparar'
+    LIMITE = 50
+
+    def separar(self, request, pular_enviadas):
+        """Divide as cobranças em aberto da lista em: a enviar, sem e-mail e já enviadas."""
+        consulta = (filtrar_cobrancas(cobrancas_visiveis(request.user), request.GET)
+                    .filter(status=Cobranca.Status.ABERTA).order_by('locatario__razao_social', 'vencimento', 'tipo'))
+        cobrancas = list(consulta)
+        ja_enviadas = set(EnvioCobranca.objects.filter(ok=True, cobranca__in=cobrancas)
+                          .values_list('cobranca_id', flat=True))
+        a_enviar, sem_email, enviadas = [], [], []
+        for c in cobrancas:
+            c.emails = separar_emails(c.locatario.email_cobranca)
+            if not c.emails:
+                sem_email.append(c)
+            elif pular_enviadas and c.pk in ja_enviadas:
+                enviadas.append(c)
+            else:
+                a_enviar.append(c)
+        return a_enviar, sem_email, enviadas
+
+    def tela(self, request, form, pular_enviadas):
+        a_enviar, sem_email, enviadas = self.separar(request, pular_enviadas)
+        visiveis = a_enviar[:self.LIMITE]
+        return render(request, 'financeiro/enviar_todas.html', dict(
+            form=form, a_enviar=visiveis, excedente=max(0, len(a_enviar) - self.LIMITE),
+            sem_email=sem_email, enviadas=enviadas, consulta_texto=request.GET.urlencode(),
+            email_configurado=envio.email_configurado(), total_empresas=len({c.locatario_id for c in visiveis}),
+            tem_boleto=any(c.boleto for c in visiveis), tem_pix=pix.configurado(),
+        ))
+
+    def get(self, request):
+        return self.tela(request, EnviarTodasForm(), pular_enviadas=True)
+
+    def post(self, request):
+        form = EnviarTodasForm(request.POST)
+        if not form.is_valid():
+            return self.tela(request, form, pular_enviadas=True)
+        dados = form.cleaned_data
+        a_enviar, _, _ = self.separar(request, dados['pular_enviadas'])
+        a_enviar = a_enviar[:self.LIMITE]
+        voltar = f"{reverse('cobranca_lista')}?{request.GET.urlencode()}"
+        if not a_enviar:
+            messages.info(request, 'Nenhuma cobrança para enviar com esses filtros.')
+            return redirect(voltar)
+        conexao = get_connection()  # uma conexão só para todos, em vez de uma por e-mail
+        feitos, falhas = 0, []
+        try:
+            for c in a_enviar:
+                registro = envio.enviar_cobranca(
+                    c, c.emails, request.user, dados['mensagem'], dados['anexar_boleto'], dados['anexar_fatura'],
+                    dados['incluir_pix'], conexao=conexao)
+                if registro.ok:
+                    feitos += 1
+                else:
+                    falhas.append(f'{c.locatario} ({c.get_tipo_display().lower()}): {registro.erro}')
+        except envio.EmailNaoConfigurado as erro:
+            messages.error(request, str(erro))
+        finally:
+            try:
+                conexao.close()
+            except Exception:
+                pass
+        if feitos:
+            messages.success(request, f'{feitos} cobrança{"s" if feitos > 1 else ""} '
+                                      f'enviada{"s" if feitos > 1 else ""} por e-mail.')
+        if falhas:
+            messages.error(request, f'{len(falhas)} não saiu: ' + '; '.join(falhas)[:600])
+        return redirect(voltar)
 
 
 class FaturaBaixar(CobrancaAcessoMixin, View):

@@ -2,6 +2,7 @@ from django import forms
 from django.db import transaction
 from django.db.models import Q
 
+from .emails import validar_lista_de_emails
 from .models import Locatario, PessoaEmpresa, Unidade
 
 
@@ -29,6 +30,9 @@ class LocatarioForm(forms.ModelForm):
             livres |= Q(locatario=self.instance)
             self.initial['unidades'] = list(self.instance.unidades.values_list('pk', flat=True))
         self.fields['unidades'].queryset = Unidade.objects.filter(ativa=True).filter(livres)
+
+    def clean_email_cobranca(self):
+        return ', '.join(validar_lista_de_emails(self.cleaned_data['email_cobranca']))
 
     def clean_unidades(self):
         escolhidas = self.cleaned_data['unidades']

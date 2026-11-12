@@ -42,16 +42,19 @@ def montar_texto(cobranca, mensagem='', codigo_pix=None):
     return '\n'.join(linhas)
 
 
-def enviar_cobranca(cobranca, para, usuario, mensagem='', anexar_boleto=True, anexar_fatura=True, incluir_pix=True):
+def enviar_cobranca(cobranca, para, usuario, mensagem='', anexar_boleto=True, anexar_fatura=True, incluir_pix=True,
+                    conexao=None):
     """Envia e registra o resultado. Falha do servidor de e-mail vira registro com erro, não exceção."""
     if not email_configurado():
         raise EmailNaoConfigurado('O e-mail de envio ainda não foi configurado no servidor.')
+    destinatarios = [para] if isinstance(para, str) else list(para)
     com_boleto = bool(anexar_boleto and cobranca.boleto)
     com_fatura = bool(anexar_fatura and cobranca.fatura_disponivel)
     codigo_pix = pix.codigo_da_cobranca(cobranca) if incluir_pix else None
     email = EmailMessage(
         subject=f'Cobrança de {cobranca.get_tipo_display().lower()} {cobranca.referencia:%m/%Y} · Edifício Uruz',
-        body=montar_texto(cobranca, mensagem, codigo_pix), from_email=settings.DEFAULT_FROM_EMAIL, to=[para],
+        body=montar_texto(cobranca, mensagem, codigo_pix), from_email=settings.DEFAULT_FROM_EMAIL, to=destinatarios,
+        connection=conexao,
         reply_to=[settings.EMAIL_RESPONDER_PARA] if settings.EMAIL_RESPONDER_PARA else None,
     )
     if com_boleto:
@@ -70,5 +73,5 @@ def enviar_cobranca(cobranca, para, usuario, mensagem='', anexar_boleto=True, an
     except Exception as exc:  # servidor recusou, senha errada, sem rede...
         erro = f'{type(exc).__name__}: {exc}'[:300]
     return EnvioCobranca.objects.create(
-        cobranca=cobranca, para=para, com_boleto=com_boleto, com_fatura=com_fatura, com_pix=bool(codigo_pix), enviado_por=usuario,
+        cobranca=cobranca, para=', '.join(destinatarios), com_boleto=com_boleto, com_fatura=com_fatura, com_pix=bool(codigo_pix), enviado_por=usuario,
         ok=not erro, erro=erro)

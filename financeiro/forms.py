@@ -6,6 +6,8 @@ from decimal import Decimal
 from django import forms
 from django.utils import timezone
 
+from cadastros.emails import validar_lista_de_emails
+
 from .models import Cobranca, Despesa
 
 EXTENSOES_BOLETO = {'.pdf', '.jpg', '.jpeg', '.png'}
@@ -67,12 +69,26 @@ class BoletoForm(forms.Form):
 
 
 class EnviarCobrancaForm(forms.Form):
-    para = forms.EmailField(label='Enviar para')
+    def clean_para(self):
+        return validar_lista_de_emails(self.cleaned_data['para'], obrigatorio=True)
+
+
+    para = forms.CharField(label='Enviar para', max_length=500,
+                           help_text='Mais de um e-mail? Separe com vírgula.')
     mensagem = forms.CharField(label='Recado (opcional)', required=False, max_length=500,
                                widget=forms.Textarea(attrs={'rows': 2}))
     anexar_boleto = forms.BooleanField(label='Anexar o boleto', required=False, initial=True)
     incluir_pix = forms.BooleanField(label='Incluir o Pix (QR Code e copia e cola)', required=False, initial=True)
     anexar_fatura = forms.BooleanField(label='Anexar a fatura do condomínio (PDF)', required=False, initial=True)
+
+
+class EnviarTodasForm(forms.Form):
+    mensagem = forms.CharField(label='Recado para todos (opcional)', required=False, max_length=500,
+                               widget=forms.Textarea(attrs={'rows': 2}))
+    incluir_pix = forms.BooleanField(label='Incluir o Pix (QR Code e copia e cola)', required=False, initial=True)
+    anexar_boleto = forms.BooleanField(label='Anexar o boleto, quando houver', required=False, initial=True)
+    anexar_fatura = forms.BooleanField(label='Anexar a fatura do condomínio (PDF)', required=False, initial=True)
+    pular_enviadas = forms.BooleanField(label='Pular as que já foram enviadas', required=False, initial=True)
 
 
 class AluguelGerarForm(forms.Form):

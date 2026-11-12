@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block titulo %}Enviar cobranças por e-mail · Edifício Uruz{% endblock %}
+{% block h1 %}Enviar cobranças por e-mail{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{% url 'cobranca_lista' %}{% if consulta_texto %}?{{ consulta_texto }}{% endif %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Cobranças
+  </a>
+{% endblock %}
+{% block conteudo %}
+{% if not email_configurado %}
+  <p class="erro">O e-mail de envio ainda não foi configurado no servidor, então não dá para enviar.</p>
+{% endif %}
+
+<p class="suave">Estas são as cobranças <strong>em aberto</strong> da lista, com os mesmos filtros que você estava vendo. Cada empresa recebe um e-mail por cobrança, para todos os endereços do cadastro dela.</p>
+
+<div class="grade" style="margin-bottom:16px">
+  <div class="cartao"><div class="suave">Serão enviadas</div><div class="indicador" style="font-size:1.5rem">{{ a_enviar|length }}</div></div>
+  <div class="cartao"><div class="suave">Empresas</div><div class="indicador" style="font-size:1.5rem">{{ total_empresas }}</div></div>
+  <div class="cartao"><div class="suave">Sem e-mail cadastrado</div><div class="indicador" style="font-size:1.5rem; {% if sem_email %}color:var(--alerta){% endif %}">{{ sem_email|length }}</div></div>
+  <div class="cartao"><div class="suave">Já enviadas (puladas)</div><div class="indicador" style="font-size:1.5rem">{{ enviadas|length }}</div></div>
+</div>
+
+{% if excedente %}
+  <p class="erro">Há mais {{ excedente }} cobrança{{ excedente|pluralize }} além do limite de {{ a_enviar|length }} por vez. Envie estas e depois repita.</p>
+{% endif %}
+
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Vão receber</div>
+<div class="cartao" style="margin-bottom:16px">
+  <div class="table-responsive">
+    <table class="table table-uruz table-hover align-middle mb-0">
+      <thead><tr><th>Empresa</th><th>Cobrança</th><th>Vencimento</th><th class="text-end">Valor</th><th>E-mails</th></tr></thead>
+      <tbody>
+        {% for c in a_enviar %}
+          <tr>
+            <td style="white-space:normal; min-width:180px">{{ c.locatario }}</td>
+            <td>{{ c.get_tipo_display }} {{ c.referencia|date:"m/Y" }}{% if c.boleto %} <span class="suave" title="Tem boleto anexado">· boleto</span>{% endif %}</td>
+            <td>{{ c.vencimento|date:"d/m/Y" }}</td>
+            <td class="text-end">R$ {{ c.valor|floatformat:"2g" }}</td>
+            <td style="white-space:normal; overflow-wrap:anywhere; min-width:180px">{{ c.emails|join:", " }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="suave">Nenhuma cobrança para enviar com esses filtros.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if sem_email %}
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--alerta); margin:20px 0 10px;">Sem e-mail cadastrado (não serão enviadas)</div>
+<div class="cartao" style="margin-bottom:16px">
+  <ul style="margin:0; padding-left:18px">
+    {% for c in sem_email %}
+      <li>{{ c.locatario }} · {{ c.get_tipo_display }} {{ c.referencia|date:"m/Y" }} · <a href="{% url 'locatario_editar' c.locatario_id %}">cadastrar e-mail</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if enviadas %}
+<p class="suave">Puladas por já terem sido enviadas: {% for c in enviadas %}{{ c.locatario }} ({{ c.get_tipo_display|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+{% endif %}
+
+{% if a_enviar %}
+<div class="cartao">
+  <form method="post" action="?{{ consulta_texto }}" onsubmit="if(!confirm('Enviar {{ a_enviar|length }} e-mail{{ a_enviar|length|pluralize }} agora?')) return false; var b=this.querySelector('button[type=submit]'); b.disabled=true; b.textContent='Enviando… aguarde';">{% csrf_token %}
+    {% for campo in form %}
+      {% if campo.name == 'mensagem' %}
+        <div class="campo"><label for="{{ campo.id_for_label }}">{{ campo.label }}</label>{{ campo }}</div>
+      {% elif campo.name == 'incluir_pix' and not tem_pix %}
+      {% elif campo.name == 'anexar_boleto' and not tem_boleto %}
+      {% else %}
+        <div class="campo" style="margin-bottom:8px"><label style="font-weight:500">{{ campo }} {{ campo.label }}</label></div>
+      {% endif %}
+    {% endfor %}
+    <button type="submit"{% if not email_configurado %} disabled{% endif %}>Enviar {{ a_enviar|length }} cobrança{{ a_enviar|length|pluralize }}</button>
+    <a class="botao sec" href="{% url 'cobranca_lista' %}{% if consulta_texto %}?{{ consulta_texto }}{% endif %}">Cancelar</a>
+    <p class="ajuda mt-2 mb-0">Pode levar alguns segundos por cobrança. Não feche a página até terminar. Cada envio fica registrado no histórico da cobrança.</p>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

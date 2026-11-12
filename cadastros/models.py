@@ -8,7 +8,10 @@ class Locatario(models.Model):
     razao_social = models.CharField('razão social', max_length=200)
     cnpj = models.CharField('CNPJ', max_length=18, blank=True)
     contato = models.CharField('contato', max_length=120, blank=True)
-    email_cobranca = models.EmailField('e-mail de cobrança', blank=True)
+    email_cobranca = models.CharField(
+        'e-mails de cobrança', max_length=300, blank=True,
+        help_text='Para onde vão as cobranças. Pode colocar mais de um, separados por vírgula.',
+    )
     telefone = models.CharField('telefone', max_length=30, blank=True)
     ativo = models.BooleanField('ativo', default=True)
     cobranca_unificada = models.BooleanField(

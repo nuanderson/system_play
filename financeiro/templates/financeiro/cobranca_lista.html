@@ -6,6 +6,7 @@
   <div class="d-flex flex-wrap gap-2 mb-3">
     <a class="btn btn-marca" href="{% url 'aluguel_gerar' %}">{% include 'partials/icone.html' with nome='mais' %}Gerar aluguéis do mês</a>
     <a class="btn btn-acao" href="{% url 'competencia_lista' %}">Condomínio e rateio</a>
+    <a class="btn btn-acao ms-md-auto" href="{% url 'cobranca_enviar_todas' %}{% if consulta_texto %}?{{ consulta_texto }}{% endif %}">Enviar cobranças por e-mail</a>
   </div>
 {% endif %}
 
@@ -38,8 +39,8 @@
       <tbody>
         {% for c in cobrancas %}
           <tr>
-            <td>{{ c.locatario }}</td>
-            <td><a href="{% url 'cobranca_detalhe' c.pk %}">{{ c.origem }}</a></td>
+            <td style="white-space:normal; min-width:170px">{{ c.locatario }}</td>
+            <td style="white-space:normal; min-width:110px"><a href="{% url 'cobranca_detalhe' c.pk %}">{{ c.origem }}</a></td>
             <td>{{ c.get_tipo_display }}</td>
             <td>{{ c.referencia|date:"m/Y" }}</td>
             <td>{{ c.vencimento|date:"d/m/Y" }}</td>

@@ -242,7 +242,7 @@ class EnvioCobranca(models.Model):
     """Registro de cada e-mail de cobrança disparado pelo sistema, com o resultado."""
 
     cobranca = models.ForeignKey(Cobranca, on_delete=models.CASCADE, related_name='envios')
-    para = models.EmailField('enviado para')
+    para = models.CharField('enviado para', max_length=500)
     com_boleto = models.BooleanField('com boleto', default=False)
     com_fatura = models.BooleanField('com fatura', default=False)
     com_pix = models.BooleanField('com Pix', default=False)
