@@ -73,6 +73,11 @@ class Unidade(models.Model):
         'área no rateio (m²)', max_digits=8, decimal_places=2, null=True, blank=True,
         help_text='Para salas, é a parte proporcional da área do andar, dividida pela área privativa.',
     )
+    recebe_energia_transferida = models.BooleanField(
+        'recebe a energia redistribuída', default=False,
+        help_text='Marque as unidades que dividem, igualmente, o valor de energia retirado de outras unidades '
+                  '(ver Regras do rateio).',
+    )
     entra_no_rateio_por_area = models.BooleanField(
         'entra no rateio por área', default=True,
         help_text='Desmarque para unidades que não participam da divisão por área.',

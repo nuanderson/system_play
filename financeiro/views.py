@@ -9,23 +9,23 @@ from django.forms import modelformset_factory
 from django.core.mail import get_connection
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views import View
-from django.views.generic import DetailView, ListView, UpdateView
+from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from cadastros.emails import separar_emails
-from cadastros.models import Locatario
+from cadastros.models import Locatario, Unidade
 from core.escopo import q_escopo
 from core.permissions import PermissaoRequiredMixin
 
 from . import envio, fatura, pix, servicos
 from .calculo import ErroRateio, calcular_rateio
 from .forms import (AluguelGerarForm, BoletoForm, CobrancaEditarForm, CobrancaPagarForm, CompetenciaNovaForm,
-                    DespesaMarcacaoForm, EnviarCobrancaForm, EnviarTodasForm)
+                    DespesaMarcacaoForm, EnviarCobrancaForm, EnviarTodasForm, TransferenciaEnergiaForm)
 from .importacao import ErroImportacao, importar, ler_planilha
-from .models import Cobranca, Competencia, Despesa, EnvioCobranca, Rateio
+from .models import Cobranca, Competencia, Despesa, EnvioCobranca, Rateio, TransferenciaEnergia
 
 DespesaFormSet = modelformset_factory(Despesa, form=DespesaMarcacaoForm, extra=0)
 
@@ -68,6 +68,16 @@ class CompetenciaNova(PermissaoRequiredMixin, View):
         return render(request, 'financeiro/competencia_nova.html', {'form': form})
 
 
+def redistribuicao(itens):
+    """Resumo da energia redistribuída neste cálculo (quem pagou menos, quanto saiu, quem recebeu), ou None."""
+    saiu = [i for i in itens if i.energia_transferida < 0]
+    entrou = [i for i in itens if i.energia_transferida > 0]
+    if not saiu:
+        return None
+    return dict(saiu=saiu, entrou=entrou, total=sum(-i.energia_transferida for i in saiu),
+                igual=len({i.energia_transferida for i in entrou}) == 1)
+
+
 class CompetenciaDetalhe(PermissaoRequiredMixin, View):
     permissao = 'financeiro_preparar'
     def get(self, request, pk):
@@ -82,6 +92,7 @@ class CompetenciaDetalhe(PermissaoRequiredMixin, View):
         totais = competencia.total_por_tipo()
         excluidas = competencia.despesas.filter(entra_no_rateio=False).aggregate(t=Sum('valor'))['t'] or Decimal('0')
         rateio = getattr(competencia, 'rateio', None) if competencia.status != Competencia.Status.ABERTA else None
+        itens = list(rateio.itens.select_related('unidade', 'locatario')) if rateio else []
         return render(request, 'financeiro/competencia_detalhe.html', {
             'competencia': competencia,
             'formset': formset,
@@ -89,7 +100,8 @@ class CompetenciaDetalhe(PermissaoRequiredMixin, View):
             'total_rateado': sum(totais.values()),
             'excluidas': excluidas,
             'rateio': rateio,
-            'itens': rateio.itens.select_related('unidade', 'locatario') if rateio else [],
+            'itens': itens,
+            'redistribuicao': redistribuicao(itens),
             'multas': competencia.despesas.aggregate(t=Sum('multa_juros'))['t'] or Decimal('0'),
         })
 
@@ -123,6 +135,66 @@ class RateioCalcular(PermissaoRequiredMixin, View):
         except ErroRateio as erro:
             messages.error(request, str(erro))
         return redirect('competencia_detalhe', pk=competencia.pk)
+
+
+class RateioReabrir(PermissaoRequiredMixin, View):
+    """Destrava um mês aprovado para recalcular (só se não houver cobrança aberta ou paga dele)."""
+    permissao = 'rateio_aprovar'
+
+    def post(self, request, pk):
+        competencia = get_object_or_404(Competencia, pk=pk)
+        try:
+            servicos.reabrir_rateio(competencia)
+        except ErroRateio as erro:
+            messages.error(request, str(erro))
+        else:
+            messages.success(request, 'Rateio reaberto. Recalcule, confira e aprove de novo.')
+        return redirect('competencia_detalhe', pk=competencia.pk)
+
+
+class RegrasRateio(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
+
+    def get(self, request):
+        return render(request, 'financeiro/regras_rateio.html', {
+            'regras': TransferenciaEnergia.objects.select_related('origem'),
+            'receptores': Unidade.objects.filter(ativa=True, recebe_energia_transferida=True).order_by('ordem'),
+        })
+
+
+class RegraEnergiaCriar(PermissaoRequiredMixin, CreateView):
+    permissao = 'financeiro_preparar'
+    model = TransferenciaEnergia
+    form_class = TransferenciaEnergiaForm
+    template_name = 'form.html'
+    success_url = reverse_lazy('regras_rateio')
+    extra_context = {'titulo': 'Nova redistribuição de energia'}
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Regra cadastrada. Vale a partir do próximo cálculo do rateio.')
+        return super().form_valid(form)
+
+
+class RegraEnergiaEditar(PermissaoRequiredMixin, UpdateView):
+    permissao = 'financeiro_preparar'
+    model = TransferenciaEnergia
+    form_class = TransferenciaEnergiaForm
+    template_name = 'form.html'
+    success_url = reverse_lazy('regras_rateio')
+    extra_context = {'titulo': 'Editar redistribuição de energia'}
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Regra atualizada. Vale a partir do próximo cálculo do rateio.')
+        return super().form_valid(form)
+
+
+class RegraEnergiaExcluir(PermissaoRequiredMixin, View):
+    permissao = 'financeiro_preparar'
+
+    def post(self, request, pk):
+        get_object_or_404(TransferenciaEnergia, pk=pk).delete()
+        messages.success(request, 'Regra removida. Vale a partir do próximo cálculo do rateio.')
+        return redirect('regras_rateio')
 
 
 class RateioAprovar(PermissaoRequiredMixin, View):

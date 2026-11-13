@@ -113,6 +113,26 @@ def aprovar_rateio(competencia, usuario):
 
 
 @transaction.atomic
+def reabrir_rateio(competencia):
+    """
+    Destrava uma competência aprovada para recalcular. Só pode se todas as cobranças que saíram dela estiverem
+    canceladas (não pode haver cobrança aberta ou paga), senão o novo cálculo cobraria o mesmo mês duas vezes.
+    """
+    if competencia.status != Competencia.Status.APROVADA:
+        raise ErroRateio('Só dá para reabrir uma competência aprovada.')
+    rateio = competencia.rateio
+    ativas = Cobranca.objects.filter(rateio=rateio).exclude(status=Cobranca.Status.CANCELADA)
+    if ativas.exists():
+        raise ErroRateio(
+            f'Há {ativas.count()} cobrança(s) deste mês em aberto ou paga(s). Cancele todas antes de reabrir.')
+    rateio.aprovado_em = None
+    rateio.aprovado_por = None
+    rateio.save(update_fields=['aprovado_em', 'aprovado_por'])
+    competencia.status = Competencia.Status.CALCULADA
+    competencia.save(update_fields=['status'])
+
+
+@transaction.atomic
 def gerar_alugueis(referencia):
     """Os alugueis do mês, um por contrato vigente. Não calcula proporcional de mês parcial."""
     primeiro = referencia

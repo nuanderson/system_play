@@ -84,7 +84,7 @@
             <td>{{ i.unidade }}</td>
             <td>{% if i.locatario %}{{ i.locatario }}{% else %}<span class="suave">sem contrato — custo da Play</span>{% endif %}</td>
             <td class="num">{{ i.area }}</td>
-            <td class="num">{{ i.energia|floatformat:"2g" }}{% if i.pct_energia is not None %} <span class="suave">({{ i.pct_energia|floatformat:"-2" }}%)</span>{% endif %}</td>
+            <td class="num">{{ i.energia|floatformat:"2g" }}{% if i.pct_energia is not None %} <span class="suave">({{ i.pct_energia|floatformat:"-2" }}%)</span>{% endif %}{% if i.energia_transferida %}<br><span class="suave" style="font-size:.8rem">{% if i.energia_transferida < 0 %}−{% else %}+{% endif %} {{ i.energia_transferida|floatformat:"2g"|cut:"-" }} redistribuída</span>{% endif %}</td>
             <td class="num">{{ i.agua|floatformat:"2g" }}{% if i.pct_agua is not None %} <span class="suave">({{ i.pct_agua|floatformat:"-2" }}%)</span>{% endif %}</td>
             <td class="num">{{ i.demais|floatformat:"2g" }}</td>
             <td class="num"><strong>{{ i.total|floatformat:"2g" }}</strong></td>
@@ -96,6 +96,14 @@
       </tfoot>
     </table>
   </div>
+  {% if redistribuicao %}
+    <p class="ajuda" style="margin-top:8px">
+      <strong>Energia redistribuída:</strong>
+      {% for i in redistribuicao.saiu %}{{ i.unidade }} paga R$ {{ i.energia_transferida|floatformat:"2g"|cut:"-" }} a menos{% if not forloop.last %}; {% endif %}{% endfor %}.
+      Total de R$ {{ redistribuicao.total|floatformat:"2g" }} dividido entre {{ redistribuicao.entrou|length }} unidade{{ redistribuicao.entrou|length|pluralize }}{% if redistribuicao.igual %} (R$ {{ redistribuicao.entrou.0.energia_transferida|floatformat:"2g" }} para cada){% endif %}.
+      <a href="{% url 'regras_rateio' %}">Ver regras</a>
+    </p>
+  {% endif %}
   {% if competencia.status == 'calculada' and pode.rateio_aprovar %}
     <form method="post" action="{% url 'rateio_aprovar' competencia.pk %}" style="margin-top:12px" onsubmit="return confirm('Aprovar o rateio e gerar as cobranças de condomínio?');">{% csrf_token %}
       <button type="submit">Aprovar e gerar cobranças</button>
@@ -103,6 +111,12 @@
     </form>
   {% elif competencia.status == 'aprovada' %}
     <p class="ajuda">Aprovado em {{ rateio.aprovado_em|date:"d/m/Y H:i" }}{% if rateio.aprovado_por %} por {{ rateio.aprovado_por }}{% endif %}. <a href="{% url 'cobranca_lista' %}">Ver cobranças</a></p>
+    {% if pode.rateio_aprovar %}
+      <form method="post" action="{% url 'rateio_reabrir' competencia.pk %}" onsubmit="return confirm('Reabrir este mês para recalcular? Só é possível se todas as cobranças dele estiverem canceladas.');">{% csrf_token %}
+        <button class="btn btn-sm btn-acao" type="submit">Reabrir para recalcular</button>
+        <span class="ajuda">Só funciona se todas as cobranças deste mês estiverem canceladas.</span>
+      </form>
+    {% endif %}
   {% endif %}
 {% endif %}
 {% endblock %}

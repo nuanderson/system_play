@@ -2,8 +2,10 @@ import calendar
 import os
 import uuid
 from datetime import date
+from decimal import Decimal
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q, Sum
 from django.db.models.signals import post_delete
@@ -135,6 +137,10 @@ class RateioItem(models.Model):
     energia = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     agua = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     demais = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    energia_transferida = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text='Parte da energia que saiu (negativo) ou entrou (positivo) por redistribuição. Já está em "energia".',
+    )
 
     class Meta:
         ordering = ['unidade__ordem']
@@ -142,6 +148,28 @@ class RateioItem(models.Model):
     @property
     def total(self):
         return self.energia + self.agua + self.demais
+
+
+class TransferenciaEnergia(models.Model):
+    """Regra do rateio: uma unidade paga menos energia, e o valor retirado é dividido, igualmente,
+    entre as unidades marcadas para receber (Unidade.recebe_energia_transferida)."""
+
+    origem = models.OneToOneField(Unidade, on_delete=models.CASCADE, related_name='transferencia_energia',
+                                  verbose_name='unidade que paga menos')
+    percentual = models.DecimalField(
+        'percentual da energia retirado', max_digits=5, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01')), MaxValueValidator(Decimal('100'))],
+        help_text='Sobre a energia que a própria unidade pagaria no rateio.',
+    )
+    ativa = models.BooleanField('ativa', default=True)
+
+    class Meta:
+        verbose_name = 'redistribuição de energia'
+        verbose_name_plural = 'redistribuições de energia'
+        ordering = ['origem__ordem']
+
+    def __str__(self):
+        return f'{self.origem}: {self.percentual}% da energia'
 
 
 class Cobranca(models.Model):

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block titulo %}Regras do rateio · Edifício Uruz{% endblock %}
+{% block h1 %}Regras do rateio{% endblock %}
+{% block voltar %}
+  <a class="btn btn-sm btn-voltar" href="{% url 'competencia_lista' %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>Condomínio e rateio
+  </a>
+{% endblock %}
+{% block conteudo %}
+<p class="suave">Regras que valem em <strong>todo cálculo</strong> do rateio, sem precisar mexer nos contratos. Mudar uma regra só vale a partir do próximo cálculo. Meses já aprovados não mudam sozinhos.</p>
+
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Redistribuição de energia</div>
+<p class="suave">Cada unidade abaixo paga menos uma parte da própria energia. O valor retirado é somado e dividido, em partes iguais, entre as unidades que recebem. O total do condomínio não muda.</p>
+<p><a class="btn btn-marca" href="{% url 'regra_energia_criar' %}">{% include 'partials/icone.html' with nome='mais' %}Nova regra</a></p>
+<div class="cartao" style="margin-bottom:16px">
+  <div class="table-responsive">
+    <table class="table table-uruz table-hover align-middle mb-0">
+      <thead><tr><th>Unidade que paga menos</th><th class="text-end">% da energia que sai</th><th>Situação</th><th></th></tr></thead>
+      <tbody>
+        {% for r in regras %}
+          <tr{% if not r.ativa %} style="opacity:.6"{% endif %}>
+            <td>{{ r.origem }}</td>
+            <td class="text-end">{{ r.percentual|floatformat:"-2" }}%</td>
+            <td>{% if r.ativa %}<span class="selo vigente">ativa</span>{% else %}<span class="selo encerrado">desligada</span>{% endif %}</td>
+            <td class="text-end">
+              <div class="acoes">
+                <a class="btn btn-sm btn-acao" href="{% url 'regra_energia_editar' r.pk %}">{% include 'partials/icone.html' with nome='lapis' %}Editar</a>
+                <form method="post" action="{% url 'regra_energia_excluir' r.pk %}" onsubmit="return confirm('Remover esta regra?');">{% csrf_token %}
+                  <button class="btn btn-sm btn-perigo" type="submit">{% include 'partials/icone.html' with nome='lixeira' %}Remover</button></form>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="suave">Nenhuma regra cadastrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="secao" style="font-size:.8rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--suave); margin:20px 0 10px;">Quem recebe o valor retirado</div>
+<div class="cartao">
+  {% if receptores %}
+    <p style="margin:0">{% for u in receptores %}{{ u.nome }}{% if not forloop.last %}, {% endif %}{% endfor %}. <span class="suave">({{ receptores|length }} unidade{{ receptores|length|pluralize }}, partes iguais)</span></p>
+  {% else %}
+    <p class="erro" style="margin:0">Nenhuma unidade marcada para receber. Sem isso, o rateio recusa o cálculo quando há regra ativa.</p>
+  {% endif %}
+  {% if pode.unidades_editar %}<p class="ajuda mt-2 mb-0">Para mudar quem recebe, edite a unidade em <a href="{% url 'unidade_lista' %}">Unidades</a> e marque "recebe a energia redistribuída".</p>{% endif %}
+</div>
+{% endblock %}

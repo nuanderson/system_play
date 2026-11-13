@@ -4,6 +4,8 @@ Regras (ver PLANO-DE-RATEIO.md):
 - Energia e água: quem tem porcentagem fixa no contrato paga essa % da conta. O restante da conta
   é dividido, por área, entre as unidades que não têm % fixa naquele item.
 - Demais despesas: divididas entre todas as unidades, por área.
+- Redistribuição de energia: depois do rateio, certas unidades pagam uma % a menos da própria energia, e o
+  valor retirado é dividido, igualmente, entre as unidades marcadas para receber. O total não muda.
 """
 
 from decimal import ROUND_HALF_UP, Decimal
@@ -11,7 +13,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from cadastros.models import Unidade
 from contratos.models import Contrato
 
-from .models import Competencia, Rateio, RateioItem
+from .models import Competencia, Rateio, RateioItem, TransferenciaEnergia
 
 CENTAVO = Decimal('0.01')
 CEM = Decimal('100')
@@ -56,7 +58,42 @@ def ratear_componente(total, unidades, campo_pct, nome):
     return resultado
 
 
-def calcular(totais, unidades):
+def dividir_igual(total, ids):
+    """Divide `total` em partes iguais, em centavos. Os centavos que sobram vão um a um para as primeiras unidades."""
+    ids = list(ids)
+    if not ids:
+        raise ErroRateio('Não há unidades para receber a energia redistribuída.')
+    total = arredondar(total)
+    base = (total / len(ids)).quantize(CENTAVO, rounding='ROUND_FLOOR')
+    sobra = int((total - base * len(ids)) / CENTAVO)
+    return {i: base + (CENTAVO if n < sobra else Decimal('0')) for n, i in enumerate(ids)}
+
+
+def redistribuir_energia(energia, regras, destinos):
+    """
+    energia: dict id -> valor. regras: dict id_origem -> percentual. destinos: ids que recebem.
+    Devolve (nova_energia, transferido), onde transferido é id -> valor com sinal (saiu < 0, entrou > 0).
+    """
+    retirado = {i: arredondar(energia[i] * pct / CEM) for i, pct in regras.items() if i in energia}
+    retirado = {i: v for i, v in retirado.items() if v}
+    if not retirado:
+        return dict(energia), {}
+    receptores = [i for i in destinos if i in energia and i not in retirado]
+    if not receptores:
+        raise ErroRateio('Há regra de redistribuição de energia, mas nenhuma unidade está marcada para receber '
+                         'o valor. Marque as unidades em Regras do rateio.')
+    partes = dividir_igual(sum(retirado.values()), receptores)
+    nova, transferido = dict(energia), {}
+    for i, valor in retirado.items():
+        nova[i] -= valor
+        transferido[i] = -valor
+    for i, valor in partes.items():
+        nova[i] += valor
+        transferido[i] = valor
+    return nova, transferido
+
+
+def calcular(totais, unidades, regras_energia=None, destinos_energia=()):
     """
     totais: dict com 'energia', 'agua', 'demais' (valores das despesas que entram no rateio).
     unidades: dict id -> dict(area, pct_energia, pct_agua).
@@ -68,7 +105,13 @@ def calcular(totais, unidades):
     agua = ratear_componente(totais['agua'], unidades, 'pct_agua', 'água')
     demais = dividir(totais['demais'], {i: u['area'] for i, u in unidades.items()}) if totais['demais'] else \
         {i: Decimal('0.00') for i in unidades}
-    return {i: dict(energia=energia[i], agua=agua[i], demais=demais[i]) for i in unidades}
+    transferido = {}
+    if regras_energia:
+        energia, transferido = redistribuir_energia(energia, regras_energia, destinos_energia)
+    resultado = {i: dict(energia=energia[i], agua=agua[i], demais=demais[i]) for i in unidades}
+    for i, valor in transferido.items():
+        resultado[i]['energia_transferida'] = valor
+    return resultado
 
 
 def unidades_do_rateio():
@@ -95,7 +138,9 @@ def calcular_rateio(competencia):
     if not any(totais.values()):
         raise ErroRateio('Nenhuma despesa marcada para entrar no rateio.')
     dados = unidades_do_rateio()
-    resultado = calcular(totais, dados)
+    regras = {t.origem_id: t.percentual for t in TransferenciaEnergia.objects.filter(ativa=True)}
+    destinos = [i for i, u in dados.items() if u['unidade'].recebe_energia_transferida]
+    resultado = calcular(totais, dados, regras, destinos)
 
     Rateio.objects.filter(competencia=competencia).delete()
     rateio = Rateio.objects.create(

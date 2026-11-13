@@ -8,7 +8,9 @@ from django.utils import timezone
 
 from cadastros.emails import validar_lista_de_emails
 
-from .models import Cobranca, Despesa
+from cadastros.models import Unidade
+
+from .models import Cobranca, Despesa, TransferenciaEnergia
 
 EXTENSOES_BOLETO = {'.pdf', '.jpg', '.jpeg', '.png'}
 
@@ -41,6 +43,27 @@ class CompetenciaNovaForm(forms.Form):
         if arquivo.size > 5 * 1024 * 1024:
             raise forms.ValidationError('O arquivo passa de 5 MB.')
         return arquivo
+
+
+class TransferenciaEnergiaForm(forms.ModelForm):
+    class Meta:
+        model = TransferenciaEnergia
+        fields = ['origem', 'percentual', 'ativa']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        usadas = TransferenciaEnergia.objects.exclude(pk=self.instance.pk).values_list('origem_id', flat=True)
+        self.fields['origem'].queryset = (Unidade.objects.filter(ativa=True, recebe_energia_transferida=False)
+                                           .exclude(pk__in=usadas).order_by('ordem'))
+        self.fields['origem'].label = 'Unidade que paga menos energia'
+        self.fields['percentual'].label = '% da energia dessa unidade que sai'
+
+    def clean_origem(self):
+        origem = self.cleaned_data['origem']
+        if origem.recebe_energia_transferida:
+            raise forms.ValidationError('Esta unidade está marcada para receber a energia. Uma unidade não pode '
+                                        'pagar menos e receber ao mesmo tempo.')
+        return origem
 
 
 class DespesaMarcacaoForm(forms.ModelForm):

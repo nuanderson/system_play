@@ -68,5 +68,5 @@ class UnidadeForm(forms.ModelForm):
         model = Unidade
         fields = [
             'nome', 'tipo', 'andar', 'ordem', 'area_privativa', 'area_rateio',
-            'entra_no_rateio_por_area', 'locatario', 'ativa',
+            'entra_no_rateio_por_area', 'recebe_energia_transferida', 'locatario', 'ativa',
         ]
