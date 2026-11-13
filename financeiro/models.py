@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q, Sum
+from django.db.models.functions import Coalesce
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
@@ -245,6 +246,28 @@ class Cobranca(models.Model):
     @classmethod
     def em_aberto(cls):
         return cls.objects.filter(status=cls.Status.ABERTA)
+
+    @staticmethod
+    def totais(consulta):
+        """
+        Resumo de um conjunto de cobranças (as canceladas não contam em nada):
+        emitido, em aberto, atrasado, recebido (o valor efetivamente pago) e % recebido do emitido.
+        """
+        valida = consulta.exclude(status=Cobranca.Status.CANCELADA)
+        soma = lambda q, campo='valor': q.aggregate(t=Sum(campo))['t'] or Decimal('0.00')
+        abertas = valida.filter(status=Cobranca.Status.ABERTA)
+        pagas = valida.filter(status=Cobranca.Status.PAGA)
+        emitido = soma(valida)
+        recebido = pagas.aggregate(t=Sum(Coalesce('valor_pago', 'valor')))['t'] or Decimal('0.00')
+        return dict(
+            emitido=emitido,
+            aberto=soma(abertas),
+            atrasado=soma(abertas.filter(vencimento__lt=timezone.localdate())),
+            recebido=recebido,
+            qtd_aberto=abertas.count(),
+            qtd_pago=pagas.count(),
+            percentual=(recebido * 100 / emitido).quantize(Decimal('0.1')) if emitido else Decimal('0.0'),
+        )
 
     @classmethod
     def atrasadas(cls):

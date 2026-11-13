@@ -265,12 +265,12 @@ class CobrancaLista(CobrancaAcessoMixin, ListView):
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
-        consulta = contexto['cobrancas']
-        hoje = timezone.localdate()
-        abertas = consulta.filter(status=Cobranca.Status.ABERTA)
+        # Os totais valem para tipo, mês e empresa filtrados, mas não para a situação: com "Pagas" na lista,
+        # o quadro continua mostrando também o que ainda está em aberto.
+        parametros = self.request.GET.copy()
+        parametros.pop('situacao', None)
         contexto.update(
-            total_aberto=abertas.aggregate(t=Sum('valor'))['t'] or Decimal('0'),
-            total_atrasado=abertas.filter(vencimento__lt=hoje).aggregate(t=Sum('valor'))['t'] or Decimal('0'),
+            totais=Cobranca.totais(filtrar_cobrancas(cobrancas_visiveis(self.request.user), parametros)),
             filtros=dict(
                 situacao=self.request.GET.get('situacao', ''), tipo=self.request.GET.get('tipo', ''),
                 mes=self.request.GET.get('mes', ''), empresa=self.request.GET.get('empresa', ''),

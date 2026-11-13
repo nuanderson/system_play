@@ -11,8 +11,13 @@
 {% endif %}
 
 <div class="grade" style="margin-bottom:16px">
-  <div class="cartao"><div class="suave">Em aberto</div><div class="indicador" style="font-size:1.5rem">R$ {{ total_aberto|floatformat:"2g" }}</div></div>
-  <div class="cartao"><div class="suave">Atrasado</div><div class="indicador" style="font-size:1.5rem; color:var(--alerta)">R$ {{ total_atrasado|floatformat:"2g" }}</div></div>
+  <div class="cartao"><div class="suave">Em aberto</div><div class="indicador" style="font-size:1.5rem">R$ {{ totais.aberto|floatformat:"2g" }}</div>
+    <div class="suave" style="font-size:.85rem">{{ totais.qtd_aberto }} cobrança{{ totais.qtd_aberto|pluralize }}</div></div>
+  <div class="cartao"><div class="suave">Atrasado</div><div class="indicador" style="font-size:1.5rem; color:var(--alerta)">R$ {{ totais.atrasado|floatformat:"2g" }}</div>
+    <div class="suave" style="font-size:.85rem">vencimento já passou</div></div>
+  <div class="cartao"><div class="suave">Recebido</div><div class="indicador" style="font-size:1.5rem; color:var(--ok)">R$ {{ totais.recebido|floatformat:"2g" }}</div>
+    <div class="suave" style="font-size:.85rem">{{ totais.qtd_pago }} paga{{ totais.qtd_pago|pluralize }} · {{ totais.percentual|floatformat:"1" }}% de R$ {{ totais.emitido|floatformat:"2g" }}</div>
+    <div style="height:6px; border-radius:999px; background:var(--borda); margin-top:6px; overflow:hidden"><div style="height:100%; width:{{ totais.percentual|stringformat:'s'|cut:',' }}%; background:var(--ok)"></div></div></div>
 </div>
 
 <form method="get" style="margin-bottom:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:end;">

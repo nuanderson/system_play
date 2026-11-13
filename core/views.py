@@ -99,11 +99,11 @@ def resumos(usuario):
         dados['Contratos'] = plural(Contrato.vigentes().count(), 'vigente', 'vigentes')
     elif usuario.pode('contratos_ver_proprio'):
         dados['Contratos'] = plural(Contrato.vigentes().filter(unidade_id__in=usuario.unidades_ids()).count(), 'vigente', 'vigentes')
-    if usuario.pode('cobrancas_ver_todas'):
-        dados['Cobranças'] = f'{reais(Cobranca.em_aberto().aggregate(t=Sum("valor"))["t"])} em aberto'
-    elif usuario.pode('cobrancas_ver_proprias'):
-        aberto = Cobranca.em_aberto().filter(q_escopo(usuario)).aggregate(t=Sum('valor'))['t']
-        dados['Cobranças'] = f'{reais(aberto)} em aberto'
+    if usuario.pode('cobrancas_ver_todas', 'cobrancas_ver_proprias'):
+        base = Cobranca.objects.all() if usuario.pode('cobrancas_ver_todas') else Cobranca.objects.filter(q_escopo(usuario))
+        totais = Cobranca.totais(base)
+        dados['Cobranças'] = f'{reais(totais["aberto"])} em aberto' + (
+            f' · {reais(totais["recebido"])} recebido' if totais['recebido'] else '')
 
     if usuario.pode('chamados_ver'):
         chamados = Chamado.abertos()
