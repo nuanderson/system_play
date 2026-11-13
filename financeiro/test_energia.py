@@ -1,6 +1,7 @@
 """Redistribuição de energia: parte da energia de algumas unidades vai, em partes iguais, para outras."""
 
 from decimal import Decimal
+from unittest import mock
 
 from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
@@ -162,11 +163,26 @@ class EnergiaNoRateioTests(BaseFinanceiro):
         self.assertFalse(Cobranca.objects.filter(unidade__nome='Sala 05').exists())
         self.assertIn('Sala 05', [str(i.unidade) for i in resumo['sem_contrato']])
 
-    def test_fatura_em_pdf_explica_a_redistribuicao(self):
+    def test_fatura_em_pdf_nao_menciona_a_redistribuicao(self):
+        """A empresa não precisa saber da redistribuição: ela vê o valor da energia e nada mais."""
         self.calcular()
         servicos.aprovar_rateio(self.comp, self.sindico)
-        pdf = fatura.gerar_pdf(Cobranca.objects.get(unidade__nome='Sala 01'))
-        self.assertTrue(pdf.startswith(b'%PDF-'))
+        textos = []
+        original = fatura.Paragraph
+
+        def registrar(texto, *args, **kwargs):
+            textos.append(str(texto))
+            return original(texto, *args, **kwargs)
+
+        for unidade in ('Sala 01', 'Térreo (clínica)', '1º andar (academia)'):
+            textos.clear()
+            with mock.patch.object(fatura, 'Paragraph', registrar):
+                pdf = fatura.gerar_pdf(Cobranca.objects.get(unidade__nome=unidade))
+            self.assertTrue(pdf.startswith(b'%PDF-'))
+            self.assertGreater(len(textos), 5)  # o PDF foi mesmo montado
+            juntos = ' '.join(textos).lower()
+            for palavra in ('redistribu', 'reduzida', 'acrescida', 'transferi'):
+                self.assertNotIn(palavra, juntos, f'{unidade}: apareceu "{palavra}"')
 
 
 class ReabrirRateioTests(BaseFinanceiro):

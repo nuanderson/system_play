@@ -134,12 +134,6 @@ def gerar_pdf(cobranca):
     historia.append(Paragraph(
         f'Sua participação no total das despesas rateadas do mês: {d["participacao"]:.2f}%'.replace('.', ','),
         estilo['nota']))
-    transferido = sum((r.energia_transferida for r in d['rateio_itens']), ZERO)
-    if transferido:
-        sentido = 'reduzida' if transferido < 0 else 'acrescida'
-        historia.append(Paragraph(
-            f'A energia acima já está {sentido} em {real(abs(transferido))} pela redistribuição de energia do condomínio.',
-            estilo['nota']))
 
     historia += [Paragraph('Gastos do prédio no mês', estilo['secao'])]
     linhas = [['Categoria', 'Valor', '% do total']]
