@@ -1,0 +1,10 @@
+[Unit]
+Description=Roda a exportação do Edifício Uruz todo dia às 06:10 (America/Sao_Paulo)
+
+[Timer]
+OnCalendar=*-*-* 06:10:00 America/Sao_Paulo
+Persistent=true
+Unit=uruz-export.service
+
+[Install]
+WantedBy=timers.target

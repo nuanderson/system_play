@@ -1,0 +1,13 @@
+[Unit]
+Description=Exportação diária do Edifício Uruz para o agente de relatórios
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/uruz/app
+ExecStart=/usr/bin/docker compose -f docker-compose.yml -f /opt/uruz/compose.prod.yml exec -T web python manage.py exportar_hermes
+StandardOutput=append:/var/log/uruz-export.log
+StandardError=append:/var/log/uruz-export.log
+TimeoutStartSec=15min
+Nice=10
