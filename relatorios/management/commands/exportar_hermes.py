@@ -47,14 +47,14 @@ class Command(BaseCommand):
         falhou = False
 
         caminho_json = os.environ.get('GOOGLE_SA_JSON', '')
-        pasta_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '')
+        drive_id = os.environ.get('GOOGLE_SHARED_DRIVE_ID', '')
         chave_existe = bool(caminho_json) and os.path.isfile(caminho_json)
         quer_drive = not opcoes['sem_entrega'] and chave_existe
         if not opcoes['sem_entrega'] and not chave_existe:
             log.warning('Sem chave da service account%s: o zip fica só na pasta do servidor, sem envio ao Drive.',
                         f' (o arquivo {caminho_json} ainda não existe)' if caminho_json else ' (GOOGLE_SA_JSON não definido)')
         entrega = dict(destino='google_drive' if quer_drive else 'somente_servidor',
-                       pasta=drive_mod.PASTA_PADRAO if quer_drive else None)
+                       unidade_compartilhada=drive_id if quer_drive else None)
 
         try:
             fonte = exportador.FontePostgres(**conexao_somente_leitura())
@@ -83,12 +83,13 @@ class Command(BaseCommand):
 
         if quer_drive:
             try:
-                drive = drive_mod.Drive(caminho_json, pasta_id)
+                drive = drive_mod.Drive(caminho_json, drive_id)
                 enviado = drive.enviar(caminho, exportador.nome_do_zip(dia))
-                log.info('Drive: %s %s (%d bytes)', enviado['nome'], enviado['acao'], enviado['bytes'])
+                log.info('Drive: %s %s', enviado['nome'], enviado['acao'])
+                log.info('Drive: Unidade Compartilhada %s | arquivo %s | %d bytes', drive_id, enviado['id'], enviado['bytes'])
                 removidos = drive.limpar(dia, opcoes['manter_dias'])
                 if removidos:
-                    log.info('Drive: %d zip(s) antigo(s) removido(s)', len(removidos))
+                    log.info('Drive: %d zip(s) antigo(s) enviado(s) para a lixeira', len(removidos))
             except Exception as exc:
                 falhou = True
                 log.error('Entrega no Drive falhou: %s', exc)

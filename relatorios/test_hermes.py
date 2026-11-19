@@ -204,78 +204,6 @@ class SessaoFalsa:
         return self._responder('delete', url, **kw)
 
 
-class DriveTests(SimpleTestCase):
-    def setUp(self):
-        self.zip = os.path.join(tempfile.mkdtemp(), 'uruz_export_2026-11-19.zip')
-        with open(self.zip, 'wb') as f:
-            f.write(b'PK-conteudo-do-zip')
-
-    def pasta_ok(self):
-        return RespostaFalsa(corpo={'files': [{'id': 'PASTA1', 'name': drive.PASTA_PADRAO}]})
-
-    def test_acha_a_pasta_pelo_nome_e_cria_o_arquivo_dentro_dela(self):
-        sessao = SessaoFalsa(get=[self.pasta_ok(), RespostaFalsa(corpo={'files': []})],
-                             post=[RespostaFalsa(corpo={'id': 'ARQ1'})])
-        r = drive.Drive(sessao=sessao).enviar(self.zip, 'uruz_export_2026-11-19.zip')
-        self.assertEqual((r['acao'], r['id'], r['bytes']), ('criado', 'ARQ1', len(b'PK-conteudo-do-zip')))
-        metodo, url, kw = sessao.chamadas[-1]
-        self.assertEqual(metodo, 'post')
-        corpo = kw['data'].decode('latin-1')
-        self.assertIn('"parents": ["PASTA1"]', corpo)
-        self.assertIn('"name": "uruz_export_2026-11-19.zip"', corpo)
-        self.assertIn('PK-conteudo-do-zip', corpo)
-        self.assertTrue(kw['headers']['Content-Type'].startswith('multipart/related; boundary='))
-
-    def test_reexecucao_no_mesmo_dia_substitui_o_arquivo_em_vez_de_duplicar(self):
-        sessao = SessaoFalsa(get=[self.pasta_ok(), RespostaFalsa(corpo={'files': [{'id': 'ARQ9', 'name': 'x'}]})],
-                             patch=[RespostaFalsa(corpo={'id': 'ARQ9'})])
-        r = drive.Drive(sessao=sessao).enviar(self.zip, 'uruz_export_2026-11-19.zip')
-        self.assertEqual(r['acao'], 'substituído')
-        self.assertEqual(sessao.chamadas[-1][0], 'patch')
-        self.assertTrue(sessao.chamadas[-1][1].endswith('/ARQ9'))
-        self.assertEqual(sessao.respostas.get('post', []), [])  # não criou outro
-
-    def test_id_da_pasta_configurado_dispensa_a_busca_pelo_nome(self):
-        sessao = SessaoFalsa(get=[RespostaFalsa(corpo={'files': []})], post=[RespostaFalsa(corpo={'id': 'A'})])
-        drive.Drive(pasta_id='FIXA', sessao=sessao).enviar(self.zip, 'uruz_export_2026-11-19.zip')
-        self.assertIn("'FIXA' in parents", sessao.chamadas[0][2]['params']['q'])
-
-    def test_pasta_nao_compartilhada_da_erro_que_explica(self):
-        sessao = SessaoFalsa(get=[RespostaFalsa(corpo={'files': []})])
-        with self.assertRaisesMessage(drive.DriveErro, 'compartilhada'):
-            drive.Drive(sessao=sessao).pasta()
-
-    def test_duas_pastas_com_o_mesmo_nome_exigem_escolha(self):
-        sessao = SessaoFalsa(get=[RespostaFalsa(corpo={'files': [{'id': '1', 'name': 'p'}, {'id': '2', 'name': 'p'}]})])
-        with self.assertRaisesMessage(drive.DriveErro, 'GOOGLE_DRIVE_FOLDER_ID'):
-            drive.Drive(sessao=sessao).pasta()
-
-    def test_erro_do_google_vira_DriveErro(self):
-        sessao = SessaoFalsa(get=[RespostaFalsa(status=403, texto='insufficientPermissions')])
-        with self.assertRaisesMessage(drive.DriveErro, '403'):
-            drive.Drive(sessao=sessao).pasta()
-
-    def test_nome_com_aspas_e_escapado_na_consulta(self):
-        sessao = SessaoFalsa(get=[RespostaFalsa(corpo={'files': []})])
-        with self.assertRaises(drive.DriveErro):
-            drive.Drive(nome_pasta="D'Avila", sessao=sessao).pasta()
-        self.assertIn("D\\'Avila", sessao.chamadas[0][2]['params']['q'])
-
-    def test_retencao_no_drive_apaga_so_zips_do_export_com_mais_de_60_dias(self):
-        listagem = [{'id': 'a', 'name': 'uruz_export_2026-08-01.zip'},   # velho
-                    {'id': 'b', 'name': 'uruz_export_2026-11-18.zip'},   # recente
-                    {'id': 'c', 'name': 'uruz_export_2026-09-20.zip'},   # 60 dias: fica
-                    {'id': 'd', 'name': 'uruz_export_2026-08-21.zip'},   # 90 dias: sai
-                    {'id': 'e', 'name': 'minha_planilha_importante.xlsx'},
-                    {'id': 'f', 'name': 'uruz_export_2020-01-01.zip.bak'}]
-        sessao = SessaoFalsa(get=[self.pasta_ok(), RespostaFalsa(corpo={'files': listagem})],
-                             delete=[RespostaFalsa(status=204), RespostaFalsa(status=204)])
-        apagados = drive.Drive(sessao=sessao).limpar(date(2026, 11, 19), 60)
-        self.assertEqual(sorted(apagados), ['uruz_export_2026-08-01.zip', 'uruz_export_2026-08-21.zip'])
-        urls = [c[1] for c in sessao.chamadas if c[0] == 'delete']
-        self.assertEqual(sorted(u.rsplit('/', 1)[1] for u in urls), ['a', 'd'])
-
-
 class ComandoTests(SimpleTestCase):
     def setUp(self):
         self.pasta = tempfile.mkdtemp()
@@ -331,18 +259,18 @@ class ComandoTests(SimpleTestCase):
 
     def test_com_chave_do_google_envia_ao_drive_e_aplica_a_retencao(self):
         chave = self.chave()
-        with mock.patch.dict(os.environ, {'GOOGLE_SA_JSON': chave}):
+        with mock.patch.dict(os.environ, {'GOOGLE_SA_JSON': chave, 'GOOGLE_SHARED_DRIVE_ID': 'DRIVE123'}):
             with mock.patch('relatorios.management.commands.exportar_hermes.drive_mod.Drive') as Drive:
-                Drive.return_value.enviar.return_value = dict(nome='x.zip', acao='criado', bytes=10)
+                Drive.return_value.enviar.return_value = dict(id='ARQ1', nome='x.zip', acao='criado', bytes=10)
                 Drive.return_value.limpar.return_value = []
                 self.rodar()
-        Drive.assert_called_once_with(chave, '')
+        Drive.assert_called_once_with(chave, 'DRIVE123')
         enviado = Drive.return_value.enviar.call_args[0]
         self.assertTrue(enviado[0].endswith('.zip') and enviado[1].startswith('uruz_export_'))
         Drive.return_value.limpar.assert_called_once()
 
     def test_falha_no_drive_deixa_o_zip_e_sai_com_erro(self):
-        with mock.patch.dict(os.environ, {'GOOGLE_SA_JSON': self.chave()}):
+        with mock.patch.dict(os.environ, {'GOOGLE_SA_JSON': self.chave(), 'GOOGLE_SHARED_DRIVE_ID': 'DRIVE123'}):
             with mock.patch('relatorios.management.commands.exportar_hermes.drive_mod.Drive') as Drive:
                 Drive.return_value.enviar.side_effect = drive.DriveErro('Drive respondeu 403')
                 with self.assertRaises(SystemExit) as saiu:

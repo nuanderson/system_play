@@ -7,7 +7,7 @@ Documento de referência. Não contém senhas nem chaves. A parte de colunas é 
 Uma ponte **somente de leitura** entre o sistema e o agente de relatórios, em dois níveis:
 
 1. **Schema `relatorios`** no PostgreSQL: views estáveis, lidas por um papel de banco com o mínimo de poder (`hermes_ro`).
-2. **Exportação diária**: o comando `exportar_hermes` lê essas views e gera `uruz_export_AAAA-MM-DD.zip`, que vai para uma pasta do Google Drive.
+2. **Exportação diária**: o comando `exportar_hermes` lê essas views e gera `uruz_export_AAAA-MM-DD.zip`, que vai para a Unidade Compartilhada "Edifício Uruz" do Google Drive.
 
 **O agente não conecta no banco.** A porta 5432 não é aberta à internet. O papel `hermes_ro` só é usado pelo próprio job de exportação, dentro do servidor.
 
@@ -134,7 +134,7 @@ O DDL completo das views, com o comentário de cada coluna, está em `docs/herme
 - Todo dia às **06:10 (America/Sao_Paulo)**, por um timer do systemd (`deploy/hermes/uruz-export.timer`). `Persistent=true`: se o servidor estiver desligado na hora, roda assim que ligar.
 - Comando: `docker compose exec -T web python manage.py exportar_hermes` (serviço `uruz-export.service`).
 - Log: `/var/log/uruz-export.log`, rotacionado semanalmente (8 semanas, comprimido).
-- Zips: `/opt/uruz/exports` no servidor e a pasta **"Edifício Uruz - Exportações"** no Google Drive. Retenção de **60 dias** nos dois lugares, pela data no nome do arquivo.
+- Zips: `/opt/uruz/exports` no servidor e a raiz da Unidade Compartilhada **"Edifício Uruz"** no Google Drive. Retenção de **60 dias** nos dois lugares, pela data no nome do arquivo. No Drive os antigos vão para a **lixeira** (`files.update` com `trashed=true`), porque `files.delete` devolve 404 para o papel Gerente de conteúdo.
 
 ## Configuração (no `.env` do servidor, permissão 600, fora do git)
 
@@ -143,7 +143,7 @@ O DDL completo das views, com o comentário de cada coluna, está em `docs/herme
 | `HERMES_RO_PASSWORD` | Senha do papel `hermes_ro` (gerada no servidor). |
 | `HERMES_EXPORT_DIR` | Pasta dos zips dentro do container (`/exports`, que é `/opt/uruz/exports` no servidor). |
 | `GOOGLE_SA_JSON` | Caminho da chave da service account dentro do container (`/secrets/uruz-export.json`). Sem o arquivo, o zip só fica no servidor. |
-| `GOOGLE_DRIVE_FOLDER_ID` | Opcional. Id da pasta, se houver duas com o mesmo nome. |
+| `GOOGLE_SHARED_DRIVE_ID` | Id da Unidade Compartilhada "Edifício Uruz" (`0AN6kuuTWn11WUk9PVA`). Sem ele, o envio ao Drive falha com aviso claro. |
 
 ## Operação do dia a dia
 
@@ -159,9 +159,15 @@ cd /opt/uruz/app && docker compose -f docker-compose.yml -f /opt/uruz/compose.pr
 
 > As views leem tabelas do sistema. Se um dia uma coluna dessas tabelas for renomeada ou apagada, o PostgreSQL recusa a mudança enquanto a view existir, ou a view para de funcionar. Os testes (`relatorios/test_hermes_postgres.py`) pegam isso antes de publicar.
 
-## Entrega no Google Drive
+## Entrega no Google Drive (Unidade Compartilhada)
 
-A service account **só enxerga o que for compartilhado com o e-mail dela**. Compartilhe só a pasta "Edifício Uruz - Exportações", como **Editor**. Coloque a chave em `/opt/uruz/secrets/uruz-export.json` (dono uid 1000, permissão 600). O escopo usado é `drive`, o mínimo que o Google oferece para gravar numa pasta que a conta não criou.
+O destino é uma **Unidade Compartilhada**, e não uma pasta do "Meu Drive": service account não tem cota de armazenamento no "Meu Drive", e o upload ali falha com `storageQuotaExceeded`. A service account é **membro** da unidade com o papel **Gerente de conteúdo**. Todas as chamadas levam `supportsAllDrives=true`:
+
+- envio: `files.create` com `parents=[id da unidade]` (na raiz da unidade); se o arquivo do dia já existe, `files.update` troca o conteúdo;
+- listagem: `files.list` com `driveId`, `corpora=drive`, `includeItemsFromAllDrives=true` (com paginação);
+- retenção: `files.update` com `trashed=true` (o `delete` devolve 404 nesse papel).
+
+Coloque a chave em `/opt/uruz/secrets/uruz-export.json` (dono uid 1000, permissão 600). O escopo usado é `drive`. Quando a chave existe e `GOOGLE_SHARED_DRIVE_ID` está definido, o log mostra `Drive: uruz_export_AAAA-MM-DD.zip criado` (ou `substituído`, se for a segunda execução do dia).
 
 ## Revogar tudo
 
@@ -173,7 +179,7 @@ Na ordem abaixo. Cada passo é independente e pode ser repetido sem erro.
    sudo rm -f /etc/systemd/system/uruz-export.service /etc/systemd/system/uruz-export.timer /etc/logrotate.d/uruz-export
    sudo systemctl daemon-reload
    ```
-2. **Remover o acesso à pasta do Drive**: no Google Drive, abra a pasta "Edifício Uruz - Exportações" → Compartilhar → remova o e-mail da service account. Depois, no Google Cloud, apague a chave (ou a service account inteira) e apague o arquivo `/opt/uruz/secrets/uruz-export.json`.
+2. **Remover o acesso à Unidade Compartilhada**: no Google Drive, abra a unidade "Edifício Uruz" → Gerenciar membros → remova o e-mail da service account. Depois, no Google Cloud, apague a chave (ou a service account inteira) e apague o arquivo `/opt/uruz/secrets/uruz-export.json` (`shred -u`).
 3. **Apagar o papel e as views do banco**
    ```bash
    cd /opt/uruz/app
@@ -191,7 +197,7 @@ Rodado de verdade no servidor, com a exportação já funcionando, e depois tudo
 | Passo | Ensaiado? | Resultado |
 |---|---|---|
 | 1. Parar e remover o timer, as units e o logrotate | Sim | Timer sumiu da lista, `systemctl cat` não acha mais as units. |
-| 2. Tirar o acesso à pasta do Drive e apagar a chave no Google | **Não** (é no Google, fora do servidor) | Passo manual. Apagar o arquivo local da chave: `shred -u /opt/uruz/secrets/uruz-export.json`. |
+| 2. Tirar a service account dos membros da Unidade Compartilhada e apagar a chave no Google | **Não** (é no Google, fora do servidor) | Passo manual. Apagar o arquivo local da chave: `shred -u /opt/uruz/secrets/uruz-export.json`. |
 | 3. `DROP` das views, do schema e do papel `hermes_ro` | Sim | Papel, schema e 5 views removidos; nenhum objeto restou para o papel. |
 | 4. Limpar as variáveis do `.env` | Não | Edição simples de arquivo; sem o papel, o exportador falha com segurança. |
 | 5. Apagar os zips | Não | Para não apagar a primeira exportação real. |

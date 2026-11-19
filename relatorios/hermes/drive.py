@@ -1,8 +1,9 @@
-"""Entrega do zip numa pasta do Google Drive, com uma service account.
+"""Entrega do zip numa Unidade Compartilhada do Google Drive, com uma service account.
 
-A service account só enxerga o que for compartilhado com o e-mail dela. Com a pasta "Edifício Uruz - Exportações"
-compartilhada como Editor, ela só alcança essa pasta. O escopo "drive" é o mínimo que o Google oferece para
-mexer numa pasta que a própria conta não criou.
+Service account NÃO tem cota de armazenamento no "Meu Drive": o upload ali falha com storageQuotaExceeded. Por isso o
+destino é uma Unidade Compartilhada da qual a conta é membro (papel Gerente de conteúdo). Todas as chamadas levam
+supportsAllDrives=true. Com esse papel, apagar de vez (files.delete) devolve 404, então a retenção manda para a lixeira
+(files.update com trashed=true).
 """
 
 import json
@@ -15,7 +16,6 @@ log = logging.getLogger('uruz.exportacao')
 ESCOPO = 'https://www.googleapis.com/auth/drive'
 API = 'https://www.googleapis.com/drive/v3/files'
 UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
-PASTA_PADRAO = 'Edifício Uruz - Exportações'
 PADRAO_ARQUIVO = re.compile(r'^uruz_export_(\d{4}-\d{2}-\d{2})\.zip$')
 
 
@@ -28,9 +28,13 @@ def _aspas(texto):
 
 
 class Drive:
-    def __init__(self, caminho_json=None, pasta_id='', nome_pasta=PASTA_PADRAO, sessao=None):
-        self.caminho_json, self.pasta_id, self.nome_pasta = caminho_json, pasta_id, nome_pasta
-        self._sessao = sessao
+    api = API
+    upload = UPLOAD
+
+    def __init__(self, caminho_json=None, drive_id='', sessao=None):
+        if not drive_id:
+            raise DriveErro('Falta o id da Unidade Compartilhada (GOOGLE_SHARED_DRIVE_ID).')
+        self.caminho_json, self.drive_id, self._sessao = caminho_json, drive_id, sessao
 
     @property
     def sessao(self):
@@ -48,33 +52,30 @@ class Drive:
             raise DriveErro(f'Drive respondeu {resposta.status_code}: {resposta.text[:300]}')
         return resposta
 
-    def _listar(self, consulta):
-        resposta = self._chamar('get', API, params=dict(
-            q=consulta, fields='files(id,name)', pageSize=1000, supportsAllDrives='true',
-            includeItemsFromAllDrives='true'))
-        return resposta.json().get('files', [])
-
-    def pasta(self):
-        """Id da pasta de destino: o configurado, ou a pasta com o nome padrão que foi compartilhada com a conta."""
-        if self.pasta_id:
-            return self.pasta_id
-        achadas = self._listar(
-            f"name = '{_aspas(self.nome_pasta)}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false")
-        if not achadas:
-            raise DriveErro(f'Não achei a pasta "{self.nome_pasta}". Ela foi compartilhada com o e-mail da service account?')
-        if len(achadas) > 1:
-            raise DriveErro(f'Há {len(achadas)} pastas chamadas "{self.nome_pasta}" visíveis para a conta. '
-                            'Defina GOOGLE_DRIVE_FOLDER_ID para escolher uma.')
-        self.pasta_id = achadas[0]['id']
-        return self.pasta_id
+    def listar(self, consulta):
+        """Arquivos da Unidade Compartilhada que casam com a consulta (files.list, com paginação)."""
+        achados, pagina = [], None
+        while True:
+            parametros = dict(
+                q=consulta, driveId=self.drive_id, corpora='drive', includeItemsFromAllDrives='true',
+                supportsAllDrives='true', fields='nextPageToken,files(id,name)', pageSize=1000)
+            if pagina:
+                parametros['pageToken'] = pagina
+            corpo = self._chamar('get', self.api, params=parametros).json()
+            achados += corpo.get('files', [])
+            pagina = corpo.get('nextPageToken')
+            if not pagina:
+                return achados
 
     def enviar(self, caminho_zip, nome):
-        """Sobe o zip. Se já existe um arquivo com esse nome na pasta (reexecução no mesmo dia), substitui o conteúdo."""
-        pasta = self.pasta()
-        existentes = self._listar(f"'{pasta}' in parents and name = '{_aspas(nome)}' and trashed = false")
+        """
+        Sobe o zip para a raiz da Unidade Compartilhada (files.create com parents=[drive_id]).
+        Se já existe um arquivo com esse nome (reexecução no mesmo dia), troca o conteúdo (files.update).
+        """
+        existentes = self.listar(f"name = '{_aspas(nome)}' and trashed = false")
         with open(caminho_zip, 'rb') as f:
             conteudo = f.read()
-        metadados = {'name': nome} if existentes else {'name': nome, 'parents': [pasta]}
+        metadados = {'name': nome} if existentes else {'name': nome, 'parents': [self.drive_id]}
         limite = 'uruz-' + 'x' * 24
         corpo = (
             f'--{limite}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'.encode()
@@ -85,21 +86,23 @@ class Drive:
         cabecalho = {'Content-Type': f'multipart/related; boundary={limite}'}
         parametros = dict(uploadType='multipart', supportsAllDrives='true', fields='id,name')
         if existentes:
-            resposta = self._chamar('patch', f"{UPLOAD}/{existentes[0]['id']}", params=parametros, data=corpo, headers=cabecalho)
+            resposta = self._chamar('patch', f"{self.upload}/{existentes[0]['id']}", params=parametros, data=corpo, headers=cabecalho)
             acao = 'substituído'
         else:
-            resposta = self._chamar('post', UPLOAD, params=parametros, data=corpo, headers=cabecalho)
+            resposta = self._chamar('post', self.upload, params=parametros, data=corpo, headers=cabecalho)
             acao = 'criado'
         return dict(id=resposta.json().get('id'), nome=nome, acao=acao, bytes=len(conteudo))
 
     def limpar(self, hoje, manter_dias=60):
-        """Apaga da pasta os zips com mais de `manter_dias` (pela data no nome). Só mexe em nomes uruz_export_*.zip."""
-        pasta = self.pasta()
+        """
+        Manda para a lixeira os zips com mais de `manter_dias` (pela data no nome), com files.update trashed=true.
+        Só mexe em nomes uruz_export_AAAA-MM-DD.zip.
+        """
         limite = hoje - timedelta(days=manter_dias)
-        apagados = []
-        for arq in self._listar(f"'{pasta}' in parents and name contains 'uruz_export_' and trashed = false"):
+        removidos = []
+        for arq in self.listar("name contains 'uruz_export_' and trashed = false"):
             achou = PADRAO_ARQUIVO.match(arq['name'])
             if achou and date.fromisoformat(achou.group(1)) < limite:
-                self._chamar('delete', f"{API}/{arq['id']}", params=dict(supportsAllDrives='true'))
-                apagados.append(arq['name'])
-        return apagados
+                self._chamar('patch', f"{self.api}/{arq['id']}", params=dict(supportsAllDrives='true'), json={'trashed': True})
+                removidos.append(arq['name'])
+        return removidos
