@@ -1,4 +1,5 @@
 /var/log/uruz-export.log {
+    su root syslog
     weekly
     rotate 8
     compress

@@ -183,3 +183,17 @@ Na ordem abaixo. Cada passo é independente e pode ser repetido sem erro.
    Equivale a `REVOKE` em tudo, `DROP OWNED BY hermes_ro`, `DROP ROLE hermes_ro` e `DROP SCHEMA relatorios CASCADE`.
 4. **Limpar as variáveis**: apague `HERMES_RO_PASSWORD`, `HERMES_EXPORT_DIR` e `GOOGLE_*` do `.env` e rode `sh /opt/uruz/deploy.sh`.
 5. **Apagar os zips**: `sudo rm -rf /opt/uruz/exports` (e, se quiser, os arquivos já enviados à pasta do Drive).
+
+## Ensaio da revogação (19/11/2026, em produção)
+
+Rodado de verdade no servidor, com a exportação já funcionando, e depois tudo foi reinstalado.
+
+| Passo | Ensaiado? | Resultado |
+|---|---|---|
+| 1. Parar e remover o timer, as units e o logrotate | Sim | Timer sumiu da lista, `systemctl cat` não acha mais as units. |
+| 2. Tirar o acesso à pasta do Drive e apagar a chave no Google | **Não** (é no Google, fora do servidor) | Passo manual. Apagar o arquivo local da chave: `shred -u /opt/uruz/secrets/uruz-export.json`. |
+| 3. `DROP` das views, do schema e do papel `hermes_ro` | Sim | Papel, schema e 5 views removidos; nenhum objeto restou para o papel. |
+| 4. Limpar as variáveis do `.env` | Não | Edição simples de arquivo; sem o papel, o exportador falha com segurança. |
+| 5. Apagar os zips | Não | Para não apagar a primeira exportação real. |
+| O app depois da revogação | Sim | Login HTTP 200, `manage.py check` sem problemas, mesmos dados (7 empresas, 9 contratos, 14 cobranças). |
+| O exportador depois da revogação | Sim | Sai com código 1 ("Não consegui conectar ao banco com o papel de leitura") e **não gera zip**. |
